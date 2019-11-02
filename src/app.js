@@ -204,14 +204,14 @@ function update_out_files() {
         let is_image = out_prj.f[name]['type'].startsWith('image');
         let is_video = out_prj.f[name]['type'].startsWith('video');
         let html = `
-            <nav class="level">
-                <div class="level-left">
+            <nav style="display: flex; margin-bottom: 10px;">
+                <div>
                     <p>
                         <a href="${out_prj_url_map[name]}" download="${name_e}">${name_e}</a>
                         <span class="tag is-light">${readable_size(out_prj.f[name]['data'].length)}</span>
                     </p>
                 </div>
-                <div class="level-right">
+                <div style="margin-left: auto; align-self: flex-start;">
                     <button class="button is-small" ${(is_image||is_video)?'':'disabled'}>${L('Insert')}</button>
                     <button class="button is-small">${L('Remove')}</button>
                 </div>
@@ -243,11 +243,11 @@ function update_modal_passwd_list() {
         let pw = pw_list[i];
         let pw_e = escape_html(pw).replace(/ /g, "&blank;");
         let html = `
-            <nav class="level">
-                <div class="level-left">
+            <nav style="display: flex; margin-bottom: 10px;">
+                <div>
                     <p>#${i}: ${pw_e}</p>
                 </div>
-                <div class="level-right">
+                <div style="margin-left: auto; align-self: flex-start;">
                     <button class="button is-small">${L('Remove')}</button>
                 </div>
             </nav>`;
@@ -279,11 +279,11 @@ function update_modal_passwd_sel() {
         let pw = pw_list[i];
         let pw_e = escape_html(pw).replace(/ /g, "&blank;")
         let html = `
-            <nav class="level">
-                <div class="level-left">
+            <nav style="display: flex; margin-bottom: 10px;">
+                <div>
                     <p>#${i}: ${pw_e}</p>
                 </div>
-                <div class="level-right">
+                <div style="margin-left: auto; align-self: flex-start;">
                     <button class="button is-small">${L('Set')}</button>
                 </div>
             </nav>`;
@@ -458,8 +458,8 @@ async function decrypt(dat=null) {
         let blob_url = URL.createObjectURL(blob);
         in_prj_url_map[name] = blob_url;
         list.innerHTML += `
-            <nav class="level">
-                <div class="level-left">
+            <nav style="display: flex; margin-bottom: 10px;">
+                <div>
                     <p>
                         <a href="${blob_url}" download="${escape_html(name)}">${escape_html(name)}</a>
                         <span class="tag is-light">${readable_size(f['data'].length)}</span>

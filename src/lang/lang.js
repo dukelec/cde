@@ -34,6 +34,7 @@ let trans_hk = {
     'Insert': '插入',
     'Remove': '刪除',
     
+    'File name, use date if empty': '文件名，留空使用日期',
     'Are you sure you want to clean all?': '是否確認清除所有數據？',
     'Clean all finished': '全部清除成功',
     'Please set password': '請設置密碼',
@@ -80,6 +81,7 @@ let trans_cn = {
     'Insert': '插入',
     'Remove': '删除',
     
+    'File name, use date if empty': '文件名，留空使用日期',
     'Are you sure you want to clean all?': '是否确认清除所有数据？',
     'Clean all finished': '全部清除成功',
     'Please set password': '请设置密码',
