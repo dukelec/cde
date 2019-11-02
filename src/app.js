@@ -212,7 +212,7 @@ function update_out_files() {
                     </p>
                 </div>
                 <div style="margin-left: auto; align-self: flex-start;">
-                    <button class="button is-small" ${(is_image||is_video)?'':'disabled'}>${L('Insert')}</button>
+                    <button class="button is-small" style="display: ${(is_image||is_video)?'normal':'none'}">${L('Insert')}</button>
                     <button class="button is-small">${L('Remove')}</button>
                 </div>
             </nav>`;
@@ -225,10 +225,11 @@ function update_out_files() {
                 pell.exec('insertHTML', html)
             }
         };
-        list.lastElementChild.getElementsByTagName("button")[1].onclick = function() {
+        list.lastElementChild.getElementsByTagName("button")[1].onclick = async function() {
             URL.revokeObjectURL(out_prj_url_map[name]);
             delete out_prj.f[name];
             delete out_prj_url_map[name];
+            await db.set('tmp', 'f', out_prj.f);
             update_out_files();
         };
     }
