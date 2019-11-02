@@ -18,7 +18,7 @@
  */
 
 import pell from '../lib/pell/pell.js'
-import { L } from './utils/lang.js'
+import { L } from './lang/lang.js'
 import {
     sha256, aes256,
     dat2hex, dat2str, str2dat,
@@ -28,6 +28,7 @@ import { Idb } from './utils/idb.js';
 
 
 let first_install = false;
+let editor;
 
 let db = null;
 let pw_list = []; // password list
@@ -85,32 +86,75 @@ window.addEventListener('load', async function() {
     }
     out_pw = pw_def; // use default passwd
     update_out_pw();
-    
+
     out_prj.b = await db.get('tmp', 'b') || '';
     out_prj.f = await db.get('tmp', 'f') || {};
     for (let name in out_prj.f) {
         let f = out_prj.f[name];
-        console.log('xxx', name, f, out_prj.f);
         let blob = new Blob([f['data']], {type: f['type']});
         out_prj_url_map[name] = URL.createObjectURL(blob);
     }
+
+    editor = pell.init({
+        element: document.getElementById('editor'),
+        onChange: async html => {
+            out_prj.b = html_blob_conv(html, out_prj_url_map, false);
+            await db.set('tmp', 'b', out_prj.b);
+        },
+        defaultParagraphSeparator: 'p',
+        styleWithCSS: false,
+        actions: [
+            'bold',
+            'code',
+            'heading1',
+            'heading2',
+            'image',
+            'italic',
+            'line',
+            'link',
+            'olist',
+            'paragraph',
+            'quote',
+            'strikethrough',
+            'ulist',
+            'underline',
+            {
+                name: 'backColor',
+                icon: '<div style="background-color:pink;">A</div>',
+                title: 'Highlight Color',
+                result: () => pell.exec('backColor', 'pink')
+            },
+            {
+                name: 'default',
+                icon: '<i class="fas fa-eraser"></i>',
+                title: 'Remove Format',
+                result: () => pell.exec('removeFormat')
+            }
+        ],
+        classes: {
+            actionbar: 'pell-actionbar',
+            button: 'pell-button',
+            content: 'pell-content',
+            selected: 'pell-button-selected'
+        }
+    });
+
     editor.content.innerHTML = html_blob_conv(out_prj.b, out_prj_url_map);
     update_out_files();
 
-    //init_sw();
     update_modal_passwd_list();
     update_modal_passwd_sel();
-    console.log('before decrypt'); ///
+
     await decrypt();
-    console.log('after decrypt'); ///
+    init_sw();
 });
 
 document.getElementById('clean_all').onclick = async function() {
-    if (!confirm('Are you sure you want to clean all?'))
+    if (!confirm(L('Are you sure you want to clean all?')))
         return;
     await db.clear('var');
     await db.clear('tmp');
-    alert('Clean all finished');
+    alert(L('Clean all finished'));
     location = location.origin;
 };
 
@@ -140,55 +184,6 @@ function init_sw() {
     }
 }
 
-
-//import pell from 'pell'
-
-const editor = pell.init({
-    element: document.getElementById('editor'),
-    onChange: async html => {
-        out_prj.b = html_blob_conv(html, out_prj_url_map, false);
-        await db.set('tmp', 'b', out_prj.b);
-    },
-    defaultParagraphSeparator: 'p',
-    styleWithCSS: true,
-    actions: [
-        'bold',
-        'underline',
-        {
-            name: 'italic',
-            result: () => pell.exec('italic')
-        },
-        {
-            name: 'backColor',
-            icon: '<div style="background-color:pink;">A</div>',
-            title: 'Highlight Color',
-            result: () => pell.exec('backColor', 'pink')
-        },
-        {
-            name: 'image',
-            result: () => {
-                const url = window.prompt('Enter the image URL')
-                if (url) pell.exec('insertImage', url)
-            }
-        },
-        {
-            name: 'link',
-            result: () => {
-                const url = window.prompt('Enter the link URL')
-                if (url) pell.exec('createLink', url)
-            }
-        }
-    ],
-    classes: {
-        actionbar: 'pell-actionbar-custom-name',
-        button: 'pell-button-custom-name',
-        content: 'pell-content-custom-name',
-        selected: 'pell-button-selected-custom-name'
-    }
-});
-
-//editor.content.innerHTML = '<b><u><i>Initial content!</i></u></b>';
-
 document.getElementById('out_add_file').onchange = async function() {
     for (let file of this.files) {
         let dat = await read_file(file);
@@ -203,7 +198,7 @@ document.getElementById('out_add_file').onchange = async function() {
 function update_out_files() {
     let list = document.getElementById('out_files');
     list.innerHTML = '';
-    
+
     for (let name in out_prj.f) {
         let name_e = escape_html(name);
         let is_image = out_prj.f[name]['type'].startsWith('image');
@@ -217,8 +212,8 @@ function update_out_files() {
                     </p>
                 </div>
                 <div class="level-right">
-                    <button class="button is-small" ${(is_image||is_video)?'':'disabled'}>Insert</button>
-                    <button class="button is-small">Remove</button>
+                    <button class="button is-small" ${(is_image||is_video)?'':'disabled'}>${L('Insert')}</button>
+                    <button class="button is-small">${L('Remove')}</button>
                 </div>
             </nav>`;
         list.insertAdjacentHTML('beforeend', html);
@@ -243,7 +238,7 @@ function update_out_files() {
 function update_modal_passwd_list() {
     let list = document.getElementById('passwd_list');
     list.innerHTML = '';
-    
+
     for (let i = 0; i < pw_list.length; i++) { // escape
         let pw = pw_list[i];
         let pw_e = escape_html(pw).replace(/ /g, "&blank;");
@@ -253,7 +248,7 @@ function update_modal_passwd_list() {
                     <p>#${i}: ${pw_e}</p>
                 </div>
                 <div class="level-right">
-                    <button class="button is-small">Remove</button>
+                    <button class="button is-small">${L('Remove')}</button>
                 </div>
             </nav>`;
         list.insertAdjacentHTML('beforeend', html);
@@ -279,7 +274,7 @@ function update_modal_passwd_list() {
 function update_modal_passwd_sel() {
     let list = document.getElementById('passwd_sel');
     list.innerHTML = '';
-    
+
     for (let i = 0; i < pw_list.length; i++) { // escape
         let pw = pw_list[i];
         let pw_e = escape_html(pw).replace(/ /g, "&blank;")
@@ -289,7 +284,7 @@ function update_modal_passwd_sel() {
                     <p>#${i}: ${pw_e}</p>
                 </div>
                 <div class="level-right">
-                    <button class="button is-small">Set</button>
+                    <button class="button is-small">${L('Set')}</button>
                 </div>
             </nav>`;
         list.insertAdjacentHTML('beforeend', html);
@@ -303,7 +298,7 @@ function update_modal_passwd_sel() {
 }
 
 window.add_passwd = async () => {
-    let pw = prompt('New password:');
+    let pw = prompt(L('New password:'));
     if (!pw)
         return;
     pw_list.unshift(pw);
@@ -316,69 +311,69 @@ function update_out_pw() {
     if (out_pw) {
         let pw_e = escape_html(out_pw.slice(0,3)).replace(/ /g, "&blank;");
         let i = pw_list.findIndex(val => val == out_pw);
-        document.getElementById('out_pw').innerHTML = `Password: #${i}: ${pw_e}…`;
+        document.getElementById('out_pw').innerHTML = `${L('Password')}: #${i}: ${pw_e}…`;
     } else {
-        document.getElementById('out_pw').innerHTML = `Password Select`;
+        document.getElementById('out_pw').innerHTML = `${L('Password Select')}`;
     }
 }
 
 // share_url, show_url, share_file, download_file
 async function encrypt(method='show_url') {
     if (!out_pw) {
-        alert("Please set password");
+        alert(L('Please set password'));
         return;
     }
     if (!out_prj.b) {
-        alert("Please input text");
+        alert(L('Please input text'));
         return;
     }
     if (method.startsWith('share') && !navigator.share) {
-        alert('Sharing is not supported');
+        alert(L('Sharing is not supported'));
         return;
     }
-    
+
     const key = await sha256(str2dat(out_pw));
     const header = str2dat('cde|');
     const content = msgpack.encode(out_prj);
     const combined = new Uint8Array([...header, ...content]);
     const out = await aes256(combined, key);
-    
+
     if (method == 'share_url') {
         let b64 = base64js.fromByteArray(out);
         navigator.share({ url: `${location.origin}/#${b64}` });
         return;
     }
-    
+
     if (method == 'show_url') {
         let b64 = base64js.fromByteArray(out);
         let url = `${location.origin}/#${b64}`;
         document.getElementById('show_out_url').innerHTML = url;
         navigator.clipboard.writeText(url).then(function() {
-            alert('Copy to clipboard successed');
+            alert(L('Copy to clipboard successed'));
         }, function() {
             console.log('Copy to clipboard failed');
         });
         return;
     }
-    
+
     let fname = document.getElementById('out_fname').value;
     if (!fname)
         fname = date2num();
-    
+
     if (method == 'share_file') {
         fname += '.txt';
-        
+
         let file = new File([out], fname, {type: 'text/plain'});
         console.log("share file:", file);
         let data = {files: [file]};
-        
+
         if (!navigator.canShare || !navigator.canShare(data)) {
             // Search: Web Share API - Level 2, permitted extensions
             // only image, video, audio and text files can be shared
-            alert('File sharing is not supported');
+            alert(L('File sharing is not supported'));
             return;
         }
-        
+
         navigator.share(data)
         .then(() => {
             console.log('Successfully sent share');
@@ -388,13 +383,12 @@ async function encrypt(method='show_url') {
         });
         return;
     }
-    
+
     if (method == 'download_file') {
         download(out, fname);
         return;
     }
 };
-
 
 async function _decrypt(dat, pw) {
     let key = await sha256(str2dat(pw));
@@ -433,7 +427,7 @@ async function decrypt(dat=null) {
             return null;
         dat = base64js.toByteArray(b64);
     }
-    
+
     let pw = null;
     let pw_index = -1;
     let ret;
@@ -446,10 +440,10 @@ async function decrypt(dat=null) {
         }
     }
     if (pw_index == -1) {
-        alert("No passwd suitable");
+        alert(L('No passwd suitable'));
         return;
     }
-    
+
     in_prj = ret;
     let pw_e = escape_html(pw.slice(0,3)).replace(/ /g, "&blank;");
     let i = pw_list.findIndex(val => val == pw);
@@ -485,7 +479,7 @@ document.getElementById('in_add_file').onchange = async function() {
 };
 
 document.getElementById('in_add_text').onclick = async function() {
-    let str = prompt('Input URL or Base64 string:');
+    let str = prompt(L('Input URL or Base64 string:'));
     if (!str)
         return;
     let hash_pos = str.search('#');
@@ -504,7 +498,7 @@ document.getElementById('re_edit').onclick = async function() {
     update_out_files();
     await db.set('tmp', 'b', out_prj.b);
     await db.set('tmp', 'f', out_prj.f);
-    alert('Ok');
+    alert(L('OK'));
 };
 
 document.getElementById('share_url').onclick = () => encrypt('share_url');

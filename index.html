@@ -14,12 +14,40 @@
 
 <script src="./lib/msgpack.min.js" defer></script>
 <script src="./lib/base64js.min.js" defer></script>
-<script type="module" src="./src/app.js"></script>
 <style>
+/* https://github.com/jgthms/bulma/issues/2259#issuecomment-516137922 */
+.navbar>.container {
+    align-items: stretch;
+    display: flex;
+    min-height: 3.25rem;
+    width: 100%;
+}
+.navbar-burger {
+    display: none;
+}
+.navbar-menu {
+    background-color: transparent;
+    box-shadow: none;
+    padding: 0;
+    justify-content: flex-end;
+    flex-grow: 1;
+    flex-shrink: 0;
+}
+.navbar, .navbar-end, .navbar-menu, .navbar-start {
+    display: flex;
+    align-items: stretch;
+}
+.navbar-item {
+    display: flex;
+    align-items: center;
+}
 </style>
 </head>
-<body>
+<body>Loading...</body>
 
+<script type="module">
+import { L } from './src/lang/lang.js'
+let index_template = () => `
 <nav class="navbar is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
         <a href="/" class="navbar-item">
@@ -31,7 +59,7 @@
             <div class="navbar-item">
                 <div class="buttons">
                     <button class="button is-small is-primary" onclick="modal_open('modal_passwd_list')">
-                        <i class="fas fa-key"></i> &nbsp; Passwords
+                        <i class="fas fa-key"></i> &nbsp; ${L('Passwords')}
                     </button>
                                     
                     <div class="dropdown is-right is-hoverable">
@@ -44,16 +72,16 @@
                             <div class="dropdown-content">
                                 <a class="dropdown-item">
                                     <input class="file-input" type="file" id="in_add_file">
-                                    <i class="fas fa-upload"></i> &nbsp; Open File
+                                    <i class="fas fa-upload"></i> &nbsp; ${L('Open File')}
                                 </a>
                                 <a class="dropdown-item" id="in_add_text">
-                                    <i class="far fa-comment-alt"></i> &nbsp; Input Text
+                                    <i class="far fa-comment-alt"></i> &nbsp; ${L('Input Text')}
                                 </a>
                                 <a class="dropdown-item" onclick="location.reload()">
-                                    <i class="fas fa-sync"></i> &nbsp; Reload Page
+                                    <i class="fas fa-sync"></i> &nbsp; ${L('Reload Page')}
                                 </a>
                                 <a class="dropdown-item is-danger" id="clean_all">
-                                    <i class="fas fa-sign-out-alt"></i> &nbsp; Clean All
+                                    <i class="fas fa-sign-out-alt"></i> &nbsp; ${L('Clean All')}
                                 </a>
                                 <hr class="dropdown-divider">
                                 <a href="https://github.com/dukelec/cde" class="dropdown-item">
@@ -71,33 +99,33 @@
 
 <section class="section">
     <div class="container">
-        <h1 class="title">Plaintext</h1>
-        <p>Use password: <span id="in_cur_pw">None</span></p>
+        <h1 class="title">${L('Plaintext')}</h1>
+        <p>${L('Use password')}: <span id="in_cur_pw">None</span></p>
     </div>
 
     <br>
     <div class="container">
-        <h3 class="title is-size-4">Content</h3>
+        <h3 class="title is-size-4">${L('Content')}</h3>
         <div class="box" id="in_plaintext"></div>
     </div>
 
     <br>
     <div class="container">
-        <h3 class="title is-size-4">Files</h3>
+        <h3 class="title is-size-4">${L('Files')}</h3>
         <div id="in_files"></div>
     </div>
 
     <br>
     <div class="container">
         <button class="button is-small" id="re_edit">
-            <i class="fas fa-arrow-down"></i> &nbsp; Edit
+            <i class="fas fa-arrow-down"></i> &nbsp; ${L('Edit')}
         </button>
     </div>
 </section>
 
 <section class="section">
     <div class="container">
-        <h1 class="title">Edit | Reply</h1>
+        <h1 class="title">${L('Edit')} | ${L('Reply')}</h1>
         <div id="editor" class="pell"></div>
 
         <section class="modal-card-body" id="out_files">
@@ -105,7 +133,7 @@
 
         <div class="button is-small">
             <input class="file-input" type="file" id="out_add_file" multiple>
-            <i class="fas fa-upload"></i> &nbsp; Add File
+            <i class="fas fa-upload"></i> &nbsp; ${L('Add File')}
         </div>
 
         <br><br>
@@ -119,12 +147,12 @@
         </div>
         <div class="columns">
             <div class="column">
-                <button class="button is-small" id="share_url">Share URL</button>
-                <button class="button is-small" id="show_url">Show URL</button>
+                <button class="button is-small" id="share_url">${L('Share URL')}</button>
+                <button class="button is-small" id="show_url">${L('Show URL')}</button>
             </div>
             <div class="column">
-                <button class="button is-small" id="share_file">Share File</button>
-                <button class="button is-small" id="download_file">Download File</button>
+                <button class="button is-small" id="share_file">${L('Share File')}</button>
+                <button class="button is-small" id="download_file">${L('Download File')}</button>
             </div>
         </div>
 
@@ -137,15 +165,15 @@
     <div class="modal-background" onclick="modal_close('modal_passwd_list')"></div>
     <div class="modal-card">
         <header class="modal-card-head">
-            <p class="modal-card-title">Password List</p>
+            <p class="modal-card-title">${L('Password List')}</p>
             <button class="delete" aria-label="close" onclick="modal_close('modal_passwd_list')"></button>
         </header>
         <section class="modal-card-body" id="passwd_list">
             <!--p>#1: xxx <button class="btn btn-sm float-right">Remove</button></p-->
         </section>
         <footer class="modal-card-foot">
-            <button class="button is-small is-success" onclick="add_passwd()">Add</button>
-            <button class="button is-small" onclick="modal_close('modal_passwd_list')">Cancel</button>
+            <button class="button is-small is-success" onclick="add_passwd()">${L('Add')}</button>
+            <button class="button is-small" onclick="modal_close('modal_passwd_list')">${L('Cancel')}</button>
         </footer>
     </div>
 </div>
@@ -154,17 +182,19 @@
     <div class="modal-background" onclick="modal_close('modal_passwd_sel')"></div>
     <div class="modal-card">
         <header class="modal-card-head">
-            <p class="modal-card-title">Password Select</p>
+            <p class="modal-card-title">${L('Password Select')}</p>
             <button class="delete" aria-label="close" onclick="modal_close('modal_passwd_sel')"></button>
         </header>
         <section class="modal-card-body" id="passwd_sel">
             <!--p>#1: xxx <button class="btn btn-sm float-right">Select</button></p-->
         </section>
         <footer class="modal-card-foot">
-            <button class="button is-small is-success" onclick="add_passwd()">Add</button>
-            <button class="button is-small" onclick="modal_close('modal_passwd_sel')">Cancel</button>
+            <button class="button is-small is-success" onclick="add_passwd()">${L('Add')}</button>
+            <button class="button is-small" onclick="modal_close('modal_passwd_sel')">${L('Cancel')}</button>
         </footer>
     </div>
-</div>
-</body>
+</div>`;
+document.getElementsByTagName("body")[0].innerHTML = index_template();
+</script>
+<script type="module" src="./src/app.js"></script>
 </html>

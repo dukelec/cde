@@ -4,8 +4,6 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './lang.js'
-
 async function read_file(file) {
     return await new Promise((resolve, reject) => {
         let reader = new FileReader();
