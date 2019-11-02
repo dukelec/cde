@@ -4,41 +4,69 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L }        from './utils/lang.js'
-import { sha256, aes256, dat2hex, dat2str, str2dat, read_file, escape_html, date2num, download } from './utils/helper.js'
-import { Idb }      from './utils/idb.js';
-import  pell      from '../lib/pell/pell.js'
+/* Message format: 'cde|' + msgpack:
+ *  {
+ *      b: 'message body...',
+ *      f: {
+ *          file_name: {type: 'image/jpeg', data: Uint8Array}
+ *      },
+ *      // v: 0, // version
+ *      // fonts: {
+ *      //   font_name: Uint8Array
+ *      // }
+ *  }
+ */
+
+import pell from '../lib/pell/pell.js'
+import { L } from './utils/lang.js'
+import {
+    sha256, aes256,
+    dat2hex, dat2str, str2dat,
+    escape_html, date2num,
+    read_file, download, readable_size } from './utils/helper.js'
+import { Idb } from './utils/idb.js';
+
 
 let first_install = false;
-let db = null;
 
+let db = null;
 let pw_list = []; // password list
 let pw_def = null; // default password
 
-let pw_in = null;
-let ciphertext_in = null;
-let plaintext_in = null; // 'cde|data...'
-let prj_in = null;
-/* prj: {
- *   b: '',
- *   f: {
- *     file_name: {type: 'image/jpeg', data: Uint8Array}
- *   },
- *   // v: "0.0",
- *   // fonts: {
- *   //   font_name: Uint8Array
- *   // }
- * }
- */
+let in_prj = { b: '', f: {} };
+let in_prj_url_map = {};
 
-let pw_out = null;
-let ciphertext_out = null;
-let plaintext_out = null; // 'cde|data...'
-let prj_out = {
-    b: '',
-    f: {}
-};
-let prj_out_blob_url = {}; // number: blob_url
+let out_pw = null; // password for edit & reply
+let out_prj = { b: '', f: {} };
+let out_prj_url_map = {}; // filename: blob_url
+
+
+function html_blob_conv(html, url_map, cde2blob=true) {
+    let parser = new DOMParser()
+    let doc = parser.parseFromString(html, "text/html");
+    for (let a of ['src', 'href', 'poster']) {
+        for (let elem of doc.querySelectorAll(`[${a}]`)) {
+            let url = elem.getAttribute(a);
+            if (cde2blob) {
+                if (url.search("cde:") == 0) {
+                    let name = url.slice(4);
+                    if (!url_map[name]) {
+                        console.warn(`lost file: ${name}`);
+                        continue;
+                    }
+                    elem.setAttribute(a, url_map[name]);
+                }
+            } else {
+                if (url.search("blob:") == 0) {
+                    let filtered = Object.entries(url_map).filter(([k,v]) => v == url);
+                    let fname = filtered.length ? filtered[0][0] : null;
+                    elem.setAttribute(a, `cde:${fname}`);
+                }
+            }
+        }
+    }
+    return doc.body.innerHTML;
+}
 
 
 window.addEventListener('load', async function() {
@@ -55,14 +83,36 @@ window.addEventListener('load', async function() {
         pw_def = pw_list[0];
         await db.set('var', 'pw_def', pw_def);
     }
-    pw_out = pw_def;////
-    update_pw_out();
-    //router();
+    out_pw = pw_def; // use default passwd
+    update_out_pw();
+    
+    out_prj.b = await db.get('tmp', 'b') || '';
+    out_prj.f = await db.get('tmp', 'f') || {};
+    for (let name in out_prj.f) {
+        let f = out_prj.f[name];
+        console.log('xxx', name, f, out_prj.f);
+        let blob = new Blob([f['data']], {type: f['type']});
+        out_prj_url_map[name] = URL.createObjectURL(blob);
+    }
+    editor.content.innerHTML = html_blob_conv(out_prj.b, out_prj_url_map);
+    update_out_files();
+
     //init_sw();
-    update_modal_passwd_list();////
-    update_modal_passwd_sel();////
-    decrypt();///
+    update_modal_passwd_list();
+    update_modal_passwd_sel();
+    console.log('before decrypt'); ///
+    await decrypt();
+    console.log('after decrypt'); ///
 });
+
+document.getElementById('clean_all').onclick = async function() {
+    if (!confirm('Are you sure you want to clean all?'))
+        return;
+    await db.clear('var');
+    await db.clear('tmp');
+    alert('Clean all finished');
+    location = location.origin;
+};
 
 function init_sw() {
     console.log('init_sw...');
@@ -91,25 +141,13 @@ function init_sw() {
 }
 
 
-
 //import pell from 'pell'
 
 const editor = pell.init({
     element: document.getElementById('editor'),
-    onChange: html => {
-        let parser = new DOMParser()
-        let doc = parser.parseFromString(html, "text/html");
-        for (let a of ['src', 'href', 'poster']) {
-            for (let elem of doc.querySelectorAll(`[${a}]`)) {
-                let url = elem.getAttribute(a);
-                if (url.search("blob:") == 0) {
-                    let filtered = Object.entries(prj_out_blob_url).filter(([k,v]) => v == url);
-                    let fname = filtered.length ? filtered[0][0] : null;
-                    elem.setAttribute(a, `cde:${fname}`);
-                }
-            }
-        }
-        prj_out.b = doc.body.innerHTML;
+    onChange: async html => {
+        out_prj.b = html_blob_conv(html, out_prj_url_map, false);
+        await db.set('tmp', 'b', out_prj.b);
     },
     defaultParagraphSeparator: 'p',
     styleWithCSS: true,
@@ -154,47 +192,52 @@ const editor = pell.init({
 document.getElementById('out_add_file').onchange = async function() {
     for (let file of this.files) {
         let dat = await read_file(file);
-        prj_out.f[file.name] = {'type': file.type, 'data': dat};
-        prj_out_blob_url[file.name] = URL.createObjectURL(file);
+        out_prj.f[file.name] = {'type': file.type, 'data': dat};
+        out_prj_url_map[file.name] = URL.createObjectURL(file);
     }
     update_out_files();
+    await db.set('tmp', 'f', out_prj.f);
+    this.value = '';
 };
 
 function update_out_files() {
     let list = document.getElementById('out_files');
     list.innerHTML = '';
     
-    for (let name in prj_out.f) {
+    for (let name in out_prj.f) {
         let name_e = escape_html(name);
+        let is_image = out_prj.f[name]['type'].startsWith('image');
+        let is_video = out_prj.f[name]['type'].startsWith('video');
         let html = `
             <nav class="level">
                 <div class="level-left">
-                    <p><a href="${prj_out_blob_url[name]}" download>${name_e}</a></p>
+                    <p>
+                        <a href="${out_prj_url_map[name]}" download="${name_e}">${name_e}</a>
+                        <span class="tag is-light">${readable_size(out_prj.f[name]['data'].length)}</span>
+                    </p>
                 </div>
                 <div class="level-right">
-                    <button class="button is-small">Insert</button>
+                    <button class="button is-small" ${(is_image||is_video)?'':'disabled'}>Insert</button>
                     <button class="button is-small">Remove</button>
                 </div>
             </nav>`;
         list.insertAdjacentHTML('beforeend', html);
         list.lastElementChild.getElementsByTagName("button")[0].onclick = function() {
-            pell.exec('insertImage', prj_out_blob_url[name]);
-            //let html = `<video controls><source src="${prj_out_blob_url[name]}"></video>`;
-            //pell.exec('insertHTML', html)
+            if (is_image) {
+                pell.exec('insertImage', out_prj_url_map[name]);
+            } else if (is_video) {
+                let html = `<video controls><source src="${out_prj_url_map[name]}"></video>`;
+                pell.exec('insertHTML', html)
+            }
         };
         list.lastElementChild.getElementsByTagName("button")[1].onclick = function() {
-            URL.revokeObjectURL(prj_out_blob_url[name]);
-            delete prj_out.f[name];
-            delete prj_out_blob_url[name];
+            URL.revokeObjectURL(out_prj_url_map[name]);
+            delete out_prj.f[name];
+            delete out_prj_url_map[name];
             update_out_files();
         };
     }
 }
-
-
-window.modal_open = id => document.getElementById(id).classList.add('is-active');
-window.modal_close = id => document.getElementById(id).classList.remove('is-active');
-
 
 
 function update_modal_passwd_list() {
@@ -223,9 +266,9 @@ function update_modal_passwd_list() {
                     pw_def = pw_list[0];
                 await db.set('var', 'pw_def', pw_def);
             }
-            if (pw_out == pw) {
-                pw_out = pw_def;
-                update_pw_out();
+            if (out_pw == pw) {
+                out_pw = pw_def;
+                update_out_pw();
             }
             update_modal_passwd_list();
             update_modal_passwd_sel();
@@ -251,10 +294,10 @@ function update_modal_passwd_sel() {
             </nav>`;
         list.insertAdjacentHTML('beforeend', html);
         list.lastElementChild.getElementsByTagName("button")[0].onclick = async function() {
-            pw_out = pw_def = pw;
+            out_pw = pw_def = pw;
             await db.set('var', 'pw_def', pw_def);
             modal_close('modal_passwd_sel');
-            update_pw_out();
+            update_out_pw();
         };
     }
 }
@@ -269,24 +312,23 @@ window.add_passwd = async () => {
     update_modal_passwd_sel();
 };
 
-function update_pw_out() {
-    if (pw_out) {
-        let pw_e = escape_html(pw_out.slice(0,3)).replace(/ /g, "&blank;");
-        let i = pw_list.findIndex(val => val == pw_out);
-        console.log('iiii', i);
-        document.getElementById('pw_out').innerHTML = `Password: #${i}: ${pw_e}…`;
+function update_out_pw() {
+    if (out_pw) {
+        let pw_e = escape_html(out_pw.slice(0,3)).replace(/ /g, "&blank;");
+        let i = pw_list.findIndex(val => val == out_pw);
+        document.getElementById('out_pw').innerHTML = `Password: #${i}: ${pw_e}…`;
     } else {
-        document.getElementById('pw_out').innerHTML = `Password Select`;
+        document.getElementById('out_pw').innerHTML = `Password Select`;
     }
 }
 
 // share_url, show_url, share_file, download_file
 async function encrypt(method='show_url') {
-    if (!pw_out) {
+    if (!out_pw) {
         alert("Please set password");
         return;
     }
-    if (!prj_out.b) {
+    if (!out_prj.b) {
         alert("Please input text");
         return;
     }
@@ -295,19 +337,15 @@ async function encrypt(method='show_url') {
         return;
     }
     
-    const key = await sha256(str2dat(pw_out));
+    const key = await sha256(str2dat(out_pw));
     const header = str2dat('cde|');
-    const content = msgpack.encode(prj_out);
+    const content = msgpack.encode(out_prj);
     const combined = new Uint8Array([...header, ...content]);
     const out = await aes256(combined, key);
     
     if (method == 'share_url') {
         let b64 = base64js.fromByteArray(out);
-        navigator.share({
-            title: document.title, ///
-            text: 'Hello World',
-            url: `${location.origin}/#${b64}`,
-        });
+        navigator.share({ url: `${location.origin}/#${b64}` });
         return;
     }
     
@@ -323,7 +361,7 @@ async function encrypt(method='show_url') {
         return;
     }
     
-    let fname = document.getElementById('fname_out').value;
+    let fname = document.getElementById('out_fname').value;
     if (!fname)
         fname = date2num();
     
@@ -383,13 +421,14 @@ async function _decrypt(dat, pw) {
 async function decrypt(dat=null) {
     if (!dat) {
         let b64 = location.hash.slice(1);
+        /*
         if (!b64) {
             let c = await navigator.clipboard.readText();
             let hash_pos = c.search('#');
             if (hash_pos < 0)
                 return;
             b64 = c.slice(hash_pos + 1);
-        }
+        } */
         if (!b64)
             return null;
         dat = base64js.toByteArray(b64);
@@ -407,44 +446,34 @@ async function decrypt(dat=null) {
         }
     }
     if (pw_index == -1) {
-        alert("no passwd suitable");
+        alert("No passwd suitable");
         return;
     }
     
+    in_prj = ret;
     let pw_e = escape_html(pw.slice(0,3)).replace(/ /g, "&blank;");
     let i = pw_list.findIndex(val => val == pw);
     document.getElementById('in_cur_pw').innerHTML = `#${i}: ${pw_e}…`;
 
-    let parser = new DOMParser()
-    let doc = parser.parseFromString(ret.b, "text/html");
-    for (let a of ['src', 'href', 'poster']) {
-        for (let elem of doc.querySelectorAll(`[${a}]`)) {
-            let url = elem.getAttribute(a);
-            if (url.search("cde:") == 0) {
-                let name = url.slice(4);
-                let f = ret.f[name];
-                if (!f) {
-                    console.warn(`lost file: ${name}`);
-                    continue;
-                }
-                let blob = new Blob([f['data']], {type: f['type']});
-                let blob_url = URL.createObjectURL(blob);
-                elem.setAttribute(a, blob_url);
-            }
-        }
-    }
-    document.getElementById('in_plaintext').innerHTML = doc.body.innerHTML;
-
+    in_prj_url_map = {};
     let list = document.getElementById('in_files');
     list.innerHTML = '';
-    for (let name in ret.f) {
+    for (let name in in_prj.f) {
+        let f = in_prj.f[name];
+        let blob = new Blob([f['data']], {type: f['type']});
+        let blob_url = URL.createObjectURL(blob);
+        in_prj_url_map[name] = blob_url;
         list.innerHTML += `
             <nav class="level">
                 <div class="level-left">
-                    <p><a href="${name}" download>${name}</a></p>
+                    <p>
+                        <a href="${blob_url}" download="${escape_html(name)}">${escape_html(name)}</a>
+                        <span class="tag is-light">${readable_size(f['data'].length)}</span>
+                    </p>
                 </div>
             </nav>`;
     }
+    document.getElementById('in_plaintext').innerHTML = html_blob_conv(in_prj.b, in_prj_url_map);
 }
 
 document.getElementById('in_add_file').onchange = async function() {
@@ -452,6 +481,30 @@ document.getElementById('in_add_file').onchange = async function() {
         return;
     let dat = await read_file(this.files[0]);
     await decrypt(dat);
+    this.value = '';
+};
+
+document.getElementById('in_add_text').onclick = async function() {
+    let str = prompt('Input URL or Base64 string:');
+    if (!str)
+        return;
+    let hash_pos = str.search('#');
+    if (hash_pos >= 0)
+        str = str.slice(hash_pos + 1);
+    if (!str)
+        return null;
+    let dat = base64js.toByteArray(str);
+    await decrypt(dat);
+};
+
+document.getElementById('re_edit').onclick = async function() {
+    out_prj_url_map = in_prj_url_map;
+    out_prj = in_prj;
+    editor.content.innerHTML = document.getElementById('in_plaintext').innerHTML;
+    update_out_files();
+    await db.set('tmp', 'b', out_prj.b);
+    await db.set('tmp', 'f', out_prj.f);
+    alert('Ok');
 };
 
 document.getElementById('share_url').onclick = () => encrypt('share_url');
@@ -459,9 +512,6 @@ document.getElementById('show_url').onclick = () => encrypt('show_url');
 document.getElementById('share_file').onclick = () => encrypt('share_file');
 document.getElementById('download_file').onclick = () => encrypt('download_file');
 
+window.modal_open = id => document.getElementById(id).classList.add('is-active');
+window.modal_close = id => document.getElementById(id).classList.remove('is-active');
 
-/*
-document.getElementById('index_menu').innerText =  L('Menu');
-document.getElementById('index_home').innerText =  L('Home');
-document.getElementById('index_setting').innerText =  L('Setting');
-*/
