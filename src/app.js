@@ -145,6 +145,11 @@ window.addEventListener('load', async function() {
     update_modal_passwd_list();
     update_modal_passwd_sel();
 
+    if (location.protocol != 'https:' && location.hostname != 'localhost') {
+        alert(L('Error: only support https'));
+        location.href = location.href.replace("http://", "https://");
+    }
+
     await decrypt();
     init_sw();
 });
