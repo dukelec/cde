@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="apple-touch-icon" sizes="192x192" href="img/icon.png" />
+<link rel="icon" type="image/png" href="img/icon.png" />
+<link rel="manifest" href="manifest.json" />
+<title>CDEncrypt</title>
+
+<link rel="stylesheet" type="text/css" href="./lib/pell/pell.css">
+<link rel="stylesheet" href="./lib/bulma.min.css">
+<script defer src="./lib/fontawesome.js"></script>
+
+<script src="./lib/msgpack.min.js" defer></script>
+<script src="./lib/base64js.min.js" defer></script>
+<script type="module" src="./src/app.js"></script>
+<style>
+</style>
+<style id="app_style"></style>
+</head>
+<body>
+<section class="section">
+  <div class="container">
+    <h1 class="title">Password Manage</h1>
+    <div>
+        <button class="button" onclick="modal_open('modal_passwd_list')">List</button>
+        <button class="button" disabled>Clear All</button>
+    </div>
+  </div>
+</section>
+  
+<section class="section">
+  <div class="container">
+    <h1 class="title">Ciphertext</h1>
+    <p>Length: <span>0</span></p>
+    
+    <div class="file">
+      <label class="file-label">
+        <input class="file-input" type="file" id="in_add_file">
+        <span class="file-cta">
+          <span class="file-icon">
+            <i class="fas fa-upload"></i>
+          </span>
+          <span class="file-label">
+            Load from file
+          </span>
+        </span>
+      </label>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h1 class="title">Plaintext</h1>
+    <p>Use password: <span id="in_cur_pw">None</span></p>
+    <button class="button" onclick="modal_open('modal_passwd')">Edit</button>
+  </div>
+
+  <br>
+  <div class="container">
+    <h3 class="title is-size-4">Content</h3>
+    <div id="in_plaintext"></div>
+  </div>
+
+  <br>
+  <div class="container">
+    <h3 class="title is-size-4">Files</h3>
+    <div id="in_files"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h1 class="title">Edit | Reply</h1>
+    <div id="editor" class="pell"></div>
+
+    <section class="modal-card-body" id="out_files">
+    </section>
+    
+    <div class="file">
+      <label class="file-label">
+        <input class="file-input" type="file" id="out_add_file" multiple>
+        <span class="file-cta">
+          <span class="file-icon">
+            <i class="fas fa-upload"></i>
+          </span>
+          <span class="file-label">
+            Add File
+          </span>
+        </span>
+      </label>
+    </div>
+
+    <br><br>
+    <div class="columns">
+      <div class="column">
+        <button class="button" id="pw_out" onclick="modal_open('modal_passwd_sel')">Select Password</button>
+      </div>
+      <div class="column">
+        <input class="input" type="text" id="fname_out" placeholder="File name, use date if empty">
+      </div>
+    </div>
+    <div class="columns">
+      <div class="column">
+        <button class="button" id="share_url">Share URL</button>
+        <button class="button" id="show_url">Show URL</button>
+      </div>
+      <div class="column">
+        <button class="button" id="share_file">Share File</button>
+        <button class="button" id="download_file">Download File</button>
+      </div>
+    </div>
+    
+    <p id="show_out_url" style="word-wrap: break-word;"></p>
+
+  </div>
+</section>
+
+
+
+<div class="modal" id="modal_passwd_list">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Password List</p>
+      <button class="delete" aria-label="close" onclick="modal_close('modal_passwd_list')"></button>
+    </header>
+    <section class="modal-card-body" id="passwd_list">
+      <!--p>#1: xxx <button class="btn btn-sm float-right">Remove</button></p-->
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="add_passwd()">Add</button>
+      <button class="button">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal" id="modal_passwd_sel">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">Password Select</p>
+      <button class="delete" aria-label="close" onclick="modal_close('modal_passwd_sel')"></button>
+    </header>
+    <section class="modal-card-body" id="passwd_sel">
+      <!--p>#1: xxx <button class="btn btn-sm float-right">Select</button></p-->
+    </section>
+    <footer class="modal-card-foot">
+      <button class="button is-success" onclick="add_passwd()">Add</button>
+      <button class="button">Cancel</button>
+    </footer>
+  </div>
+</div>
+
+</body>
+</html>
