@@ -6,7 +6,7 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-0.8';
+var cache_name = 'cde-0.9';
 var cache_files = [
     "/",
     "/img/icon.svg",

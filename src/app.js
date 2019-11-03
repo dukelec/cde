@@ -247,11 +247,10 @@ function update_modal_passwd_list() {
 
     for (let i = 0; i < pw_list.length; i++) { // escape
         let pw = pw_list[i];
-        let pw_e = escape_html(pw).replace(/ /g, "&blank;");
         let html = `
             <nav style="display: flex; margin-bottom: 10px;">
                 <div>
-                    <p>#${i}: ${pw_e}</p>
+                    <p>#${i}: ${escape_html(pw)}</p>
                 </div>
                 <div style="margin-left: auto; align-self: flex-start;">
                     <button class="button is-small">${L('Remove')}</button>
@@ -283,11 +282,10 @@ function update_modal_passwd_sel() {
 
     for (let i = 0; i < pw_list.length; i++) { // escape
         let pw = pw_list[i];
-        let pw_e = escape_html(pw).replace(/ /g, "&blank;")
         let html = `
             <nav style="display: flex; margin-bottom: 10px;">
                 <div>
-                    <p>#${i}: ${pw_e}</p>
+                    <p>#${i}: ${escape_html(pw)}</p>
                 </div>
                 <div style="margin-left: auto; align-self: flex-start;">
                     <button class="button is-small">${L('Set')}</button>
@@ -322,7 +320,7 @@ window.add_passwd = async () => {
 
 function update_out_pw() {
     if (out_pw) {
-        let pw_e = escape_html(out_pw.slice(0,3)).replace(/ /g, "&blank;");
+        let pw_e = escape_html(out_pw.slice(0,3));
         let i = pw_list.findIndex(val => val == out_pw);
         document.getElementById('out_pw').innerHTML = `#${i}: ${pw_e}…`;
     } else {
@@ -475,7 +473,7 @@ async function decrypt(dat=null) {
         in_prj = { b: ret, f: {} }
     else
         in_prj = ret;
-    let pw_e = escape_html(pw.slice(0,3)).replace(/ /g, "&blank;");
+    let pw_e = escape_html(pw.slice(0,3));
     let i = pw_list.findIndex(val => val == pw);
     document.getElementById('in_cur_pw').innerHTML = `#${i}: ${pw_e}…`;
 
