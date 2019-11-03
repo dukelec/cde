@@ -307,6 +307,8 @@ window.add_passwd = async () => {
     let pw = prompt(L('New password:'));
     if (!pw)
         return;
+    // remove exist first: move exist to top
+    pw_list = pw_list.filter(val => val != pw);
     pw_list.unshift(pw);
     await db.set('var', 'pw_list', pw_list);
     update_modal_passwd_list();
