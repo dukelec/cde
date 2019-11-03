@@ -542,8 +542,8 @@ window.modal_close = id => document.getElementById(id).classList.remove('is-acti
 function init_sw() {
     console.log('init_sw...');
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js', {
-            scope: '/'
+        navigator.serviceWorker.register('/cde/sw.js', {
+            scope: '/cde/'
         }).then(function(reg) {
             if (reg.installing) {
                 console.log('Service worker installing');

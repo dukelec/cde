@@ -8,21 +8,21 @@
 
 var cache_name = 'cde-1.3';
 var cache_files = [
-    "/",
-    "/img/icon.png",
-    "/manifest.json",
-    "/src/lang/lang.js",
-    "/src/utils/helper.js",
-    "/src/utils/idb.js",
-    "/src/app.js",
-    "/lib/pell/pell.css",
-    "/lib/pell/actions.js",
-    "/lib/pell/utilities.js",
-    "/lib/pell/pell.js",
-    "/lib/bulma.min.css",
-    "/lib/fontawesome.js",
-    "/lib/msgpack.min.js",
-    "/lib/base64js.min.js"
+    "/cde/",
+    "/cde/img/icon.png",
+    "/cde/manifest.json",
+    "/cde/src/lang/lang.js",
+    "/cde/src/utils/helper.js",
+    "/cde/src/utils/idb.js",
+    "/cde/src/app.js",
+    "/cde/lib/pell/pell.css",
+    "/cde/lib/pell/actions.js",
+    "/cde/lib/pell/utilities.js",
+    "/cde/lib/pell/pell.js",
+    "/cde/lib/bulma.min.css",
+    "/cde/lib/fontawesome.js",
+    "/cde/lib/msgpack.min.js",
+    "/cde/lib/base64js.min.js"
 ];
 
 self.addEventListener('install', function(event) {
