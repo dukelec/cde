@@ -4,7 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-/* Message format: 'cde|' + msgpack:
+/* Message format: 'cde|' + 'message body...' or msgpack:
  *  {
  *      b: 'message body...',
  *      f: {
@@ -313,6 +313,7 @@ window.add_passwd = async () => {
     await db.set('var', 'pw_list', pw_list);
     update_modal_passwd_list();
     update_modal_passwd_sel();
+    update_out_pw();
 };
 
 function update_out_pw() {
@@ -342,7 +343,7 @@ async function encrypt(method='show_url') {
 
     const key = await sha256(str2dat(out_pw));
     const header = str2dat('cde|');
-    const content = msgpack.encode(out_prj);
+    const content = msgpack.encode(Object.keys(out_prj.f).length ? out_prj : out_prj.b);
     const combined = new Uint8Array([...header, ...content]);
     const out = await aes256(combined, key);
 
@@ -452,7 +453,10 @@ async function decrypt(dat=null) {
         return;
     }
 
-    in_prj = ret;
+    if (typeof ret == 'string')
+        in_prj = { b: ret, f: {} }
+    else
+        in_prj = ret;
     let pw_e = escape_html(pw.slice(0,3)).replace(/ /g, "&blank;");
     let i = pw_list.findIndex(val => val == pw);
     document.getElementById('in_cur_pw').innerHTML = `#${i}: ${pw_e}…`;
