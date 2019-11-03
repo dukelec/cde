@@ -100,7 +100,7 @@ let index_template = () => `
 <section class="section">
     <div class="container">
         <h1 class="title">${L('Plaintext')}</h1>
-        <p>${L('Use password')}: <span id="in_cur_pw">None</span></p>
+        <p>${L('Use password')}: <span id="in_cur_pw">--</span></p>
     </div>
 
     <br>
@@ -139,7 +139,9 @@ let index_template = () => `
         <br><br>
         <div class="columns">
             <div class="column">
-                <button class="button is-small" id="out_pw" onclick="modal_open('modal_passwd_sel')">Select Password</button>
+                <button class="button is-small" onclick="modal_open('modal_passwd_sel')">
+                    <i class="fas fa-key"></i> &nbsp; ${L('Password')} &nbsp; <span id="out_pw">--</span>
+                </button>
             </div>
             <div class="column">
                 <input class="input" type="text" id="out_fname" placeholder="${L('File name, use date if empty')}">
@@ -147,12 +149,20 @@ let index_template = () => `
         </div>
         <div class="columns">
             <div class="column">
-                <button class="button is-small" id="share_url">${L('Share URL')}</button>
-                <button class="button is-small" id="show_url">${L('Show URL')}</button>
+                <button class="button is-small" id="share_url">
+                    <i class="fas fa-share-alt"></i> &nbsp; ${L('Share URL')}
+                </button>
+                <button class="button is-small" id="show_url">
+                    <i class="far fa-clipboard"></i> &nbsp; ${L('Show URL')}
+                </button>
             </div>
             <div class="column">
-                <button class="button is-small" id="share_file">${L('Share File')}</button>
-                <button class="button is-small" id="download_file">${L('Download File')}</button>
+                <button class="button is-small" id="share_file">
+                    <i class="fas fa-share-alt"></i> &nbsp; ${L('Share File')}
+                </button>
+                <button class="button is-small" id="download_file">
+                    <i class="fas fa-file-download"></i> &nbsp; ${L('Download File')}
+                </button>
             </div>
         </div>
 

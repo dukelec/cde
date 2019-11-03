@@ -303,10 +303,7 @@ function update_modal_passwd_sel() {
     }
 }
 
-window.add_passwd = async () => {
-    let pw = prompt(L('New password:'));
-    if (!pw)
-        return;
+async function _add_passwd(pw) {
     // remove exist first: move exist to top
     pw_list = pw_list.filter(val => val != pw);
     pw_list.unshift(pw);
@@ -314,15 +311,22 @@ window.add_passwd = async () => {
     update_modal_passwd_list();
     update_modal_passwd_sel();
     update_out_pw();
+}
+
+window.add_passwd = async () => {
+    let pw = prompt(L('New password:'));
+    if (!pw)
+        return;
+    await _add_passwd(pw);
 };
 
 function update_out_pw() {
     if (out_pw) {
         let pw_e = escape_html(out_pw.slice(0,3)).replace(/ /g, "&blank;");
         let i = pw_list.findIndex(val => val == out_pw);
-        document.getElementById('out_pw').innerHTML = `${L('Password')}: #${i}: ${pw_e}…`;
+        document.getElementById('out_pw').innerHTML = `#${i}: ${pw_e}…`;
     } else {
-        document.getElementById('out_pw').innerHTML = `${L('Password Select')}`;
+        document.getElementById('out_pw').innerHTML = `--`;
     }
 }
 
@@ -346,7 +350,8 @@ async function encrypt(method='show_url') {
     const content = msgpack.encode(Object.keys(out_prj.f).length ? out_prj : out_prj.b);
     const combined = new Uint8Array([...header, ...content]);
     const out = await aes256(combined, key);
-
+    document.getElementById('show_out_url').innerHTML = '';
+    
     if (method == 'share_url') {
         let b64 = base64js.fromByteArray(out);
         navigator.share({ url: `${location.origin}/#${b64}` });
@@ -433,8 +438,13 @@ async function decrypt(dat=null) {
             b64 = c.slice(hash_pos + 1);
         } */
         if (!b64)
-            return null;
-        dat = base64js.toByteArray(b64);
+            return;
+        try {
+            dat = base64js.toByteArray(b64);
+        } catch (e) {
+            alert(L('The Base64 string is invalid'));
+            return;
+        }
     }
 
     let pw = null;
@@ -449,8 +459,16 @@ async function decrypt(dat=null) {
         }
     }
     if (pw_index == -1) {
-        alert(L('No passwd suitable'));
-        return;
+        while (true) {
+            pw = prompt(L('No password suitable, add new password:'));
+            if (!pw)
+                return;
+            ret = await _decrypt(dat, pw, true);
+            if (ret)
+                break;
+        }
+        await _add_passwd(pw);
+        pw_index = 0;
     }
 
     if (typeof ret == 'string')

@@ -35,6 +35,7 @@ let trans_hk = {
     'Remove': '刪除',
     
     'Error: only support https': '錯誤：只支持 https',
+    'The Base64 string is invalid': 'Base64 字符串無效',
     'File name, use date if empty': '文件名，留空使用日期',
     'Are you sure you want to clean all?': '是否確認清除所有數據？',
     'Clean all finished': '全部清除成功',
@@ -43,12 +44,12 @@ let trans_hk = {
     'Sharing is not supported': '不支持分享',
     'Copy to clipboard successed': '成功複製到剪切板',
     'File sharing is not supported': '不支持的文件分享',
-    'No passwd suitable': '無匹配的密碼',
+    'No password suitable, add new password:': '無匹配的密碼，增加新密碼：',
     'Input URL or Base64 string:': '請輸入 URL 或 Base64 字串：',
     'New password:': '新密碼：',
     
     'OK': '好',
-    'Switching APP to new version.': '切換 APP 至新版本',
+    'Switching APP to new version.': '切換 APP 至新版本'
 };
 
 // cat lang.js | cconv -f UTF8 -t UTF8-CN
@@ -83,6 +84,7 @@ let trans_cn = {
     'Remove': '删除',
     
     'Error: only support https': '错误：只支持 https',
+    'The Base64 string is invalid': 'Base64 字符串无效',
     'File name, use date if empty': '文件名，留空使用日期',
     'Are you sure you want to clean all?': '是否确认清除所有数据？',
     'Clean all finished': '全部清除成功',
@@ -91,12 +93,12 @@ let trans_cn = {
     'Sharing is not supported': '不支持分享',
     'Copy to clipboard successed': '成功复制到剪切板',
     'File sharing is not supported': '不支持的文件分享',
-    'No passwd suitable': '无匹配的密码',
+    'No password suitable, add new password:': '无匹配的密码，增加新密码：',
     'Input URL or Base64 string:': '请输入 URL 或 Base64 字串：',
     'New password:': '新密码：',
     
     'OK': '好',
-    'Switching APP to new version.': '切换 APP 至新版本',
+    'Switching APP to new version.': '切换 APP 至新版本'
 };
 
 
