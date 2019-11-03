@@ -299,6 +299,8 @@ async function _add_passwd(pw) {
     await db.set('var', 'pw_list', pw_list);
     update_modal_passwd_list();
     update_modal_passwd_sel();
+    if (!out_pw)
+        out_pw = pw;
     update_out_pw();
 }
 
@@ -467,6 +469,8 @@ async function decrypt(dat=null) {
     let pw_e = escape_html(pw.slice(0,3));
     let i = pw_list.findIndex(val => val == pw);
     document.getElementById('in_cur_pw').innerHTML = `#${i}: ${pw_e}…`;
+    out_pw = pw;
+    update_out_pw();
 
     in_prj_url_map = {};
     let list = document.getElementById('in_files');
