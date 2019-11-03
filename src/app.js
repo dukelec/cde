@@ -163,32 +163,6 @@ document.getElementById('clean_all').onclick = async function() {
     location = location.origin;
 };
 
-function init_sw() {
-    console.log('init_sw...');
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js', {
-            scope: '/'
-        }).then(function(reg) {
-            if (reg.installing) {
-                console.log('Service worker installing');
-            } else if (reg.waiting) {
-                console.log('Service worker installed');
-            } else if (reg.active) {
-                console.log('Service worker active');
-            }
-        }).catch(function(error) {
-            console.log('Registration failed with ' + error);
-        });
-
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (!first_install) {
-                alert(L('Switching APP to new version.'));
-                location.reload();
-            }
-        });
-    }
-}
-
 document.getElementById('out_add_file').onchange = async function() {
     for (let file of this.files) {
         let dat = await read_file(file);
@@ -240,6 +214,23 @@ function update_out_files() {
     }
 }
 
+function update_in_files() {
+    let list = document.getElementById('in_files');
+    list.innerHTML = '';
+    for (let name in in_prj.f) {
+        let f = in_prj.f[name];
+        let blob_url = in_prj_url_map[name];
+        list.innerHTML += `
+            <nav style="display: flex; margin-bottom: 10px;">
+                <div>
+                    <p>
+                        <a href="${blob_url}" download="${escape_html(name)}">${escape_html(name)}</a>
+                        <span class="tag is-light">${readable_size(f['data'].length)}</span>
+                    </p>
+                </div>
+            </nav>`;
+    }
+}
 
 function update_modal_passwd_list() {
     let list = document.getElementById('passwd_list');
@@ -483,20 +474,12 @@ async function decrypt(dat=null) {
     for (let name in in_prj.f) {
         let f = in_prj.f[name];
         let blob = new Blob([f['data']], {type: f['type']});
-        let blob_url = URL.createObjectURL(blob);
-        in_prj_url_map[name] = blob_url;
-        list.innerHTML += `
-            <nav style="display: flex; margin-bottom: 10px;">
-                <div>
-                    <p>
-                        <a href="${blob_url}" download="${escape_html(name)}">${escape_html(name)}</a>
-                        <span class="tag is-light">${readable_size(f['data'].length)}</span>
-                    </p>
-                </div>
-            </nav>`;
+        in_prj_url_map[name] = URL.createObjectURL(blob);
     }
+    update_in_files();
     document.getElementById('in_plaintext').innerHTML = html_blob_conv(in_prj.b, in_prj_url_map);
 }
+
 
 document.getElementById('in_add_file').onchange = async function() {
     if (!this.files.length)
@@ -529,6 +512,16 @@ document.getElementById('re_edit').onclick = async function() {
     alert(L('OK'));
 };
 
+document.getElementById('preview').onclick = async function() {
+    in_prj_url_map = out_prj_url_map;
+    in_prj = out_prj;
+    document.getElementById('in_plaintext').innerHTML = editor.content.innerHTML;
+    update_in_files();
+    document.getElementById('in_cur_pw').innerHTML = '--';
+    alert(L('OK'));
+};
+
+
 document.getElementById('share_url').onclick = () => encrypt('share_url');
 document.getElementById('show_url').onclick = () => encrypt('show_url');
 document.getElementById('share_file').onclick = () => encrypt('share_file');
@@ -537,3 +530,28 @@ document.getElementById('download_file').onclick = () => encrypt('download_file'
 window.modal_open = id => document.getElementById(id).classList.add('is-active');
 window.modal_close = id => document.getElementById(id).classList.remove('is-active');
 
+function init_sw() {
+    console.log('init_sw...');
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js', {
+            scope: '/'
+        }).then(function(reg) {
+            if (reg.installing) {
+                console.log('Service worker installing');
+            } else if (reg.waiting) {
+                console.log('Service worker installed');
+            } else if (reg.active) {
+                console.log('Service worker active');
+            }
+        }).catch(function(error) {
+            console.log('Registration failed with ' + error);
+        });
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!first_install) {
+                alert(L('Switching APP to new version.'));
+                location.reload();
+            }
+        });
+    }
+}

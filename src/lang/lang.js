@@ -16,6 +16,7 @@ let trans_hk = {
     'Content': '內容',
     'Files': '文件',
     'Edit': '編輯',
+    'Preview': '預覽',
     
     'Reply': '回覆',
     'Add File': '添加文件',
@@ -65,6 +66,7 @@ let trans_cn = {
     'Content': '内容',
     'Files': '文件',
     'Edit': '编辑',
+    'Preview': '预览',
     
     'Reply': '回覆',
     'Add File': '添加文件',
