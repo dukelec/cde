@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="apple-touch-icon" sizes="192x192" href="img/icon.png" />
-<link rel="icon" type="image/png" href="img/icon.png" />
-<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" sizes="192x192" href="./img/icon.png" />
+<link rel="icon" type="image/png" href="./img/icon.png" />
+<link rel="manifest" href="./manifest.json" />
 <title>CDEncrypt</title>
 
 <link rel="stylesheet" type="text/css" href="./lib/pell/pell.css">
@@ -50,7 +50,7 @@ import { L } from './src/lang/lang.js'
 let index_template = () => `
 <nav class="navbar is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
-        <a href="/" class="navbar-item">
+        <a href="${location.pathname}" class="navbar-item">
             <img src="img/icon.png"> &nbsp; <strong>CDEncrypt</strong>
         </a>
     </div>

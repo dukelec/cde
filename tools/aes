@@ -1,13 +1,8 @@
 #!/bin/bash
 echo "Usage: $0 passwd input out [-d]";
 
-if [ ! -n "$1" ]; then
-  exit;
-elif [ ! -n "$2" ]; then
-  exit;
-elif [ ! -n "$3" ]; then
-  exit;
-elif [ -n "$5" ]; then
+
+if [ "$#" != "3" ] && [ "$#" != "4" ]; then
   exit;
 fi
 

@@ -160,7 +160,7 @@ document.getElementById('clean_all').onclick = async function() {
     await db.clear('var');
     await db.clear('tmp');
     alert(L('Clean all finished'));
-    location = location.origin;
+    location = location.origin + location.pathname;
 };
 
 document.getElementById('out_add_file').onchange = async function() {
@@ -343,15 +343,20 @@ async function encrypt(method='show_url') {
     const out = await aes256(combined, key);
     document.getElementById('show_out_url').innerHTML = '';
     
+    if (method.search('url') >= 0 && out.length >= 4000) {
+        if (!confirm(L('Data is too large for URL encoding, continue?')))
+            return;
+    }
+    
     if (method == 'share_url') {
         let b64 = base64js.fromByteArray(out);
-        navigator.share({ url: `${location.origin}/#${b64}` });
+        navigator.share({ url: `${location.origin+location.pathname}#${b64}` });
         return;
     }
 
     if (method == 'show_url') {
         let b64 = base64js.fromByteArray(out);
-        let url = `${location.origin}/#${b64}`;
+        let url = `${location.origin+location.pathname}#${b64}`;
         document.getElementById('show_out_url').innerHTML = url;
         navigator.clipboard.writeText(url).then(function() {
             alert(L('Copy to clipboard successed'));

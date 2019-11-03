@@ -6,10 +6,9 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.1';
+var cache_name = 'cde-1.3';
 var cache_files = [
     "/",
-    "/img/icon.svg",
     "/img/icon.png",
     "/manifest.json",
     "/src/lang/lang.js",
@@ -18,7 +17,6 @@ var cache_files = [
     "/src/app.js",
     "/lib/pell/pell.css",
     "/lib/pell/actions.js",
-    "/lib/pell/ver",
     "/lib/pell/utilities.js",
     "/lib/pell/pell.js",
     "/lib/bulma.min.css",
