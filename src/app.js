@@ -507,7 +507,13 @@ document.getElementById('in_add_text').onclick = async function() {
         str = str.slice(hash_pos + 1);
     if (!str)
         return null;
-    let dat = base64js.toByteArray(str);
+    let dat;
+    try {
+        dat = base64js.toByteArray(str);
+    } catch (e) {
+        alert(L('The Base64 string is invalid'));
+        return;
+    }
     await decrypt(dat);
 };
 
