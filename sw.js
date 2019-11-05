@@ -6,9 +6,11 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.3';
+var cache_name = 'cde-1.5';
 var cache_files = [
     "/",
+    "/img/icon/fontello.css",
+    "/img/icon/fontello.woff2",
     "/img/icon.png",
     "/manifest.json",
     "/src/lang/lang.js",
@@ -20,7 +22,6 @@ var cache_files = [
     "/lib/pell/utilities.js",
     "/lib/pell/pell.js",
     "/lib/bulma.min.css",
-    "/lib/fontawesome.js",
     "/lib/msgpack.min.js",
     "/lib/base64js.min.js"
 ];

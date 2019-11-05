@@ -327,7 +327,7 @@ async function encrypt(method='show_url') {
         alert(L('Please set password'));
         return;
     }
-    if (!out_prj.b) {
+    if (!out_prj.b && !Object.keys(out_prj.f).length) {
         alert(L('Please input text'));
         return;
     }
@@ -361,7 +361,7 @@ async function encrypt(method='show_url') {
         navigator.clipboard.writeText(url).then(function() {
             alert(L('Copy to clipboard successed'));
         }, function() {
-            console.log('Copy to clipboard failed');
+            alert(L('Copy to clipboard failed'));
         });
         return;
     }
@@ -531,10 +531,10 @@ document.getElementById('preview').onclick = async function() {
 };
 
 
-document.getElementById('share_url').onclick = () => encrypt('share_url');
-document.getElementById('show_url').onclick = () => encrypt('show_url');
-document.getElementById('share_file').onclick = () => encrypt('share_file');
-document.getElementById('download_file').onclick = () => encrypt('download_file');
+document.getElementById('share_url').onclick = async () => await encrypt('share_url');
+document.getElementById('show_url').onclick = async () => await encrypt('show_url');
+document.getElementById('share_file').onclick = async () => await encrypt('share_file');
+document.getElementById('download_file').onclick = async () => await encrypt('download_file');
 
 window.modal_open = id => document.getElementById(id).classList.add('is-active');
 window.modal_close = id => document.getElementById(id).classList.remove('is-active');
