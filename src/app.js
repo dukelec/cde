@@ -4,7 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-/* Message format: 'cde|' + 'message body...' or msgpack:
+/* Message format: 'cde|' + msgpack('message body...') or msgpack:
  *  {
  *      b: 'message body...',
  *      f: {
@@ -150,7 +150,7 @@ window.addEventListener('load', async function() {
         location.href = location.href.replace("http://", "https://");
     }
 
-    await decrypt();
+    await decrypt(location.hash.slice(1));
     init_sw();
 });
 
@@ -342,12 +342,12 @@ async function encrypt(method='show_url') {
     const combined = new Uint8Array([...header, ...content]);
     const out = await aes256(combined, key);
     document.getElementById('show_out_url').innerHTML = '';
-    
+
     if (method.search('url') >= 0 && out.length >= 4000) {
         if (!confirm(L('Data is too large for URL encoding, continue?')))
             return;
     }
-    
+
     if (method == 'share_url') {
         let b64 = base64js.fromByteArray(out);
         navigator.share({ url: `${location.origin+location.pathname}#${b64}` });
@@ -422,21 +422,26 @@ async function _decrypt(dat, pw) {
     return ret;
 }
 
-async function decrypt(dat=null) {
-    if (!dat) {
-        let b64 = location.hash.slice(1);
+async function decrypt(dat) {
+    if (typeof dat == 'string') {
+        let str = dat;
         /*
-        if (!b64) {
+        if (!str) {
             let c = await navigator.clipboard.readText();
             let hash_pos = c.search('#');
             if (hash_pos < 0)
                 return;
-            b64 = c.slice(hash_pos + 1);
+            str = c.slice(hash_pos + 1);
         } */
-        if (!b64)
+        if (!str)
             return;
+        if (str.startsWith('+')) {
+            await fetch_remote(str.slice(1));
+            return;
+        }
+
         try {
-            dat = base64js.toByteArray(b64);
+            dat = base64js.toByteArray(str);
         } catch (e) {
             alert(L('The Base64 string is invalid'));
             return;
@@ -446,7 +451,7 @@ async function decrypt(dat=null) {
     let pw = null;
     let pw_index = -1;
     let ret;
-    for (let i = 0; i < pw_list.length; i++) { // escape
+    for (let i = 0; i < pw_list.length; i++) {
         pw = pw_list[i];
         ret = await _decrypt(dat, pw, true);
         if (ret) {
@@ -460,8 +465,10 @@ async function decrypt(dat=null) {
             if (!pw)
                 return;
             ret = await _decrypt(dat, pw, true);
-            if (ret)
+            if (ret) {
+                modal_close('modal_fetch');
                 break;
+            }
         }
         await _add_passwd(pw);
         pw_index = 0;
@@ -489,6 +496,64 @@ async function decrypt(dat=null) {
     document.getElementById('in_plaintext').innerHTML = html_blob_conv(in_prj.b, in_prj_url_map);
 }
 
+async function fetch_remote(url) {
+    modal_open('modal_fetch');
+    let controller = new AbortController();
+    document.getElementById('fetch_progress').value = 0;
+    document.getElementById('fetch_progress_text').innerHTML = '0%';
+    document.getElementById('fetch_size').innerHTML = '';
+    document.getElementById('fetch_status').innerHTML = '';
+    document.getElementById("fetch_ok").disabled = true;
+    for (let elem of document.getElementsByName('fetch_cancel')) {
+        elem.onclick = () => {
+            modal_close('modal_fetch');
+            controller.abort();
+        }
+    }
+    let response;
+    try {
+        response = await fetch(url, {signal: controller.signal});
+    } catch (e) {
+        document.getElementById('fetch_status').innerHTML = `${L('Error')}: ${e}`;
+        return;
+    }
+    const reader = response.body.getReader();
+    const total_len = +response.headers.get('Content-Length');
+    let received_len = 0;
+    let chunks = [];
+    while(true) {
+        try {
+            const {done, value} = await reader.read();
+            console.log("done", done);
+            if (done)
+                break;
+            chunks.push(value);
+            received_len += value.length;
+            let progress = Math.round(received_len / total_len * 100);
+            document.getElementById('fetch_progress').value = progress;
+            document.getElementById('fetch_progress_text').innerHTML = `${progress}%`;
+            document.getElementById('fetch_size').innerHTML =
+                    `${L('Received')} ${readable_size(received_len)} / ${readable_size(total_len)}`;
+        } catch (e) {
+            console.log('fetch read catch', e);
+            document.getElementById('fetch_status').innerHTML = `| ${L('Error')}: ${e}`;
+            return;
+        }
+    }
+    if (response.status !== 200) {
+        document.getElementById('fetch_status').innerHTML = `| ${L('Error')}: ${response.status}`;
+        return;
+    }
+    let dat = new Uint8Array(received_len);
+    let pos = 0;
+    for(let chunk of chunks) {
+        dat.set(chunk, pos);
+        pos += chunk.length;
+    }
+    document.getElementById('fetch_status').innerHTML = `| ${L('Done!')}`;
+    document.getElementById("fetch_ok").disabled = false;
+    await decrypt(dat);
+}
 
 document.getElementById('in_add_file').onchange = async function() {
     if (!this.files.length)
@@ -505,16 +570,7 @@ document.getElementById('in_add_text').onclick = async function() {
     let hash_pos = str.search('#');
     if (hash_pos >= 0)
         str = str.slice(hash_pos + 1);
-    if (!str)
-        return null;
-    let dat;
-    try {
-        dat = base64js.toByteArray(str);
-    } catch (e) {
-        alert(L('The Base64 string is invalid'));
-        return;
-    }
-    await decrypt(dat);
+    await decrypt(str);
 };
 
 document.getElementById('re_edit').onclick = async function() {

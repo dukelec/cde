@@ -41,6 +41,32 @@
     display: flex;
     align-items: center;
 }
+
+/* https://stackoverflow.com/questions/50400219/bulma-progress-text-in-middle */
+.progress-wrapper {
+  position: relative;
+}
+.progress-value {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: calc(1rem / 1.5);
+  line-height: 1rem;
+  font-weight: bold;
+}
+.progress.is-small+.progress-value {
+  font-size: calc(0.75rem / 1.5);
+  line-height: 0.75rem;
+}
+.progress.is-medium+.progress-value {
+  font-size: calc(1.25rem / 1.5);
+  line-height: 1.25rem;
+}
+.progress.is-large+.progress-value {
+  font-size: calc(1.5rem / 1.5);
+  line-height: 1.5rem;
+}
 </style>
 </head>
 <body>Loading...</body>
@@ -51,7 +77,7 @@ let index_template = () => `
 <nav class="navbar is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
         <a href="${location.pathname}" class="navbar-item">
-            <img src="img/icon.png"> &nbsp; <strong>CDEncrypt</strong> &nbsp; <small>v1.6</small>
+            <img src="img/icon.png"> &nbsp; <strong>CDEncrypt</strong> &nbsp; <small>v1.7</small>
         </a>
     </div>
     <div class="navbar-menu">
@@ -204,6 +230,27 @@ let index_template = () => `
         <footer class="modal-card-foot">
             <button class="button is-small is-success" onclick="add_passwd()">${L('Add')}</button>
             <button class="button is-small" onclick="modal_close('modal_passwd_sel')">${L('Cancel')}</button>
+        </footer>
+    </div>
+</div>
+
+<div class="modal" id="modal_fetch">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">${L('Download Progress')}</p>
+            <button class="delete" aria-label="close" name="fetch_cancel"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="progress-wrapper">
+                <progress class="progress is-primary" value="0" max="100" id="fetch_progress"></progress>
+                <p class="progress-value" id="fetch_progress_text">0%</p>
+            </div>
+            <p><span id="fetch_size"></span> <span id="fetch_status"></span></p>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-small is-primary" onclick="modal_close('modal_fetch')" id="fetch_ok">${L('OK')}</button>
+            <button class="button is-small" name="fetch_cancel">${L('Cancel')}</button>
         </footer>
     </div>
 </div>`;
