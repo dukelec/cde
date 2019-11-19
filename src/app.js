@@ -524,14 +524,15 @@ async function fetch_remote(url) {
     while(true) {
         try {
             const {done, value} = await reader.read();
-            console.log("done", done);
             if (done)
                 break;
             chunks.push(value);
             received_len += value.length;
-            let progress = Math.round(received_len / total_len * 100);
-            document.getElementById('fetch_progress').value = progress;
-            document.getElementById('fetch_progress_text').innerHTML = `${progress}%`;
+            if (total_len > 0) {
+                let progress = Math.round(received_len / total_len * 100);
+                document.getElementById('fetch_progress').value = progress;
+                document.getElementById('fetch_progress_text').innerHTML = `${progress}%`;
+            }
             document.getElementById('fetch_size').innerHTML =
                     `${L('Received')} ${readable_size(received_len)} / ${readable_size(total_len)}`;
         } catch (e) {
