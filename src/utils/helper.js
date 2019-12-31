@@ -47,6 +47,20 @@ async function aes256(dat, key, type='encrypt') {
         return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-CBC', iv: iv}, _key, dat));
 }
 
+// decrypt the first block and trick the padding check
+async function aes256_blk0_d(dat, key) {
+    let iv = new Uint8Array(16); // zeros
+    let _key = await crypto.subtle.importKey('raw', key, {name: 'AES-CBC'}, false, ['encrypt', 'decrypt']);
+
+    let pad_dat = new Uint8Array(16);
+    for (let i = 0; i < 16; i++)
+        pad_dat[i] = 16; // PKCS#7
+    let pad_tmp = new Uint8Array(await crypto.subtle.encrypt({name: 'AES-CBC', iv: dat}, _key, pad_dat));
+    let pad = pad_tmp.slice(0, 16);
+    let dat_pad = new Uint8Array([...dat, ...pad]);
+    return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-CBC', iv: iv}, _key, dat_pad));
+}
+
 function dat2hex(dat, join='') {
     const dat_array = Array.from(dat);
     return dat_array.map(b => b.toString(16).padStart(2, '0')).join(join);
@@ -120,7 +134,7 @@ function readable_size(bytes, si=true) {
 
 export {
     read_file, load_img, date2num,
-    sha256, aes256,
+    sha256, aes256, aes256_blk0_d,
     dat2hex, dat2str, str2dat,
     cpy,
     download,

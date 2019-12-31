@@ -20,7 +20,7 @@
 import pell from '../lib/pell/pell.js'
 import { L } from './lang/lang.js'
 import {
-    sha256, aes256,
+    sha256, aes256, aes256_blk0_d,
     dat2hex, dat2str, str2dat,
     escape_html, date2num,
     read_file, download, readable_size } from './utils/helper.js'
@@ -402,24 +402,25 @@ async function encrypt(method='show_url') {
 
 async function _decrypt(dat, pw) {
     let key = await sha256(str2dat(pw));
-    let combined;
+    let content;
     try {
-        combined = await aes256(dat, key, 'decrypt');
+        let blk0 = await aes256_blk0_d(dat.slice(0, 16), key); // try to decrypt the first block
+        let header = blk0.slice(0, 4);
+        if (dat2str(header) != 'cde|')
+            return null;
+        let combined = await aes256(dat, key, 'decrypt');
+        content = combined.slice(4);
     } catch (e) {
+        console.log('decrypt err');
         return null;
     }
-    let header = combined.slice(0, 4);
-    let content = combined.slice(4);
-    if (dat2str(header) != 'cde|')
-        return null;
-    let ret;
+
     try {
-        ret = msgpack.decode(content);
+        return msgpack.decode(content);
     } catch (e) {
         console.log('msgpack decode err');
         return null;
     }
-    return ret;
 }
 
 async function decrypt(dat) {
@@ -453,7 +454,7 @@ async function decrypt(dat) {
     let ret;
     for (let i = 0; i < pw_list.length; i++) {
         pw = pw_list[i];
-        ret = await _decrypt(dat, pw, true);
+        ret = await _decrypt(dat, pw);
         if (ret) {
             pw_index = i;
             break;
@@ -464,7 +465,7 @@ async function decrypt(dat) {
             pw = prompt(L('No password suitable, add new password:'));
             if (!pw)
                 return;
-            ret = await _decrypt(dat, pw, true);
+            ret = await _decrypt(dat, pw);
             if (ret) {
                 modal_close('modal_fetch');
                 break;
