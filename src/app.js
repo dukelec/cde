@@ -69,6 +69,38 @@ function html_blob_conv(html, url_map, cde2blob=true) {
     return doc.body.innerHTML;
 }
 
+async function to_local() {
+    let parser = new DOMParser()
+    let doc = parser.parseFromString(editor.content.innerHTML, "text/html");
+    for (let a of ['src', 'href', 'poster']) {
+        for (let elem of doc.querySelectorAll(`[${a}]`)) {
+            let url = elem.getAttribute(a);
+            if (url.search("blob:") == 0)
+                continue;
+            console.log('to_local:', url);
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const ab = await new Response(blob).arrayBuffer();
+                const u8a = new Uint8Array(ab);
+                let sha = await sha256(u8a);
+                let name = `_${Object.keys(out_prj.f).length+1}.${blob.type.split('/')[1]}`;
+                out_prj_url_map[name] = URL.createObjectURL(blob);
+                out_prj.f[name] = {'type': blob.type, 'data': u8a};
+                elem.setAttribute(a, out_prj_url_map[name]);
+            } catch (e) {
+                alert(`${L('Download resource error')}: ${url}: ${e}`);
+            }
+        }
+    }
+    editor.content.innerHTML = doc.body.innerHTML;
+    out_prj.b = html_blob_conv(editor.content.innerHTML, out_prj_url_map, false);
+    await db.set('tmp', 'b', out_prj.b);
+    await db.set('tmp', 'f', out_prj.f);
+    update_out_files();
+    alert(L('OK'));
+}
+
 
 window.addEventListener('load', async function() {
     console.log("load app");
@@ -599,6 +631,7 @@ document.getElementById('share_url').onclick = async () => await encrypt('share_
 document.getElementById('show_url').onclick = async () => await encrypt('show_url');
 document.getElementById('share_file').onclick = async () => await encrypt('share_file');
 document.getElementById('download_file').onclick = async () => await encrypt('download_file');
+document.getElementById('to_local').onclick = async () => await to_local();
 
 window.modal_open = id => document.getElementById(id).classList.add('is-active');
 window.modal_close = id => document.getElementById(id).classList.remove('is-active');

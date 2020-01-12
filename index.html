@@ -77,7 +77,7 @@ let index_template = () => `
 <nav class="navbar is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
         <a href="${location.pathname}" class="navbar-item">
-            <img src="img/icon.png"> &nbsp; <strong>CDEncrypt</strong> &nbsp; <small>v1.9</small>
+            <img src="img/icon.png"> &nbsp; <strong>CDEncrypt</strong> &nbsp; <small>v1.10</small>
         </a>
     </div>
     <div class="navbar-menu">
@@ -160,9 +160,16 @@ let index_template = () => `
         <section class="modal-card-body" id="out_files">
         </section>
 
-        <div class="button is-small">
-            <input class="file-input" type="file" id="out_add_file" multiple>
-            <i class="fas fa-upload"></i> &nbsp; ${L('Add File')}
+        <div class="columns">
+            <div class="column">
+                <div class="button is-small">
+                    <input class="file-input" type="file" id="out_add_file" multiple>
+                    <i class="fas fa-upload"></i> &nbsp; ${L('Add File')}
+                </div>
+                <button class="button is-small" id="to_local">
+                    <i class="fas fa-file-download"></i> &nbsp; ${L('Save Resources Locally')}
+                </button>
+            </div>
         </div>
 
         <br><br>

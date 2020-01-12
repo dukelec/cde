@@ -20,6 +20,7 @@ let trans_hk = {
 
     'Reply': '回覆',
     'Add File': '添加文件',
+    'Save Resources Locally': '保存資源到本地',
     'Share URL': '分享鏈接',
     'Show URL': '顯示鏈接',
     'Share File': '分享文件',
@@ -40,6 +41,7 @@ let trans_hk = {
     'Done!': '完成！',
     'Error': '出錯',
 
+    'Download resource error': '下載資源出錯',
     'Error: only support https': '錯誤：只支持 https',
     'The Base64 string is invalid': 'Base64 字符串無效',
     'File name, use date if empty': '文件名，留空使用日期',
@@ -77,6 +79,7 @@ let trans_cn = {
 
     'Reply': '回覆',
     'Add File': '添加文件',
+    'Save Resources Locally': '保存资源到本地',
     'Share URL': '分享链接',
     'Show URL': '显示链接',
     'Share File': '分享文件',
@@ -97,6 +100,7 @@ let trans_cn = {
     'Done!': '完成！',
     'Error': '出错',
 
+    'Download resource error': '下载资源出错',
     'Error: only support https': '错误：只支持 https',
     'The Base64 string is invalid': 'Base64 字符串无效',
     'File name, use date if empty': '文件名，留空使用日期',
