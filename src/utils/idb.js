@@ -6,7 +6,7 @@
 
 class Idb {
     constructor(db_name = 'cde', store_list = ['var', 'tmp']) {
-        
+
         let _dbp = new Promise((resolve, reject) => {
             const openreq = indexedDB.open(db_name, 1);
             openreq.onerror = () => reject(openreq.error);
@@ -18,13 +18,13 @@ class Idb {
                     openreq.result.createObjectStore(store_list[i]);
             };
         });
-        
+
         return (async () => {
             this.db = await _dbp;
             return this;
         })();
     }
-    
+
     trans(store_name, type) {
         let store;
         let _sp = new Promise((resolve, reject) => {
@@ -35,7 +35,7 @@ class Idb {
         });
         return {_sp, store};
     }
-    
+
     async get(store_name, key) {
         let {_sp, store} = this.trans(store_name, 'readonly');
         let req = store.get(key);
@@ -63,7 +63,7 @@ class Idb {
         await _sp;
         return req.result;
     }
-    
+
     stores() {
         return this.db.objectStoreNames;
     }

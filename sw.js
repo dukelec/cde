@@ -6,7 +6,7 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.6';
+var cache_name = 'cde-1.10';
 var cache_files = [
     "/cde/",
     "/cde/img/icon/fontello.css",
@@ -41,9 +41,9 @@ self.addEventListener('fetch', function(event) {
         caches.open(cache_name).then(function(cache) {
             return cache.match(event.request).then(function(response) {
                 return response || fetch(event.request).then(function(response) {
-                    let url = event.request.url;
-                    if (!url.includes('/cgi-bin/') && !url.includes('/upload/'))
-                        cache.put(event.request, response.clone());
+                    //let url = event.request.url;
+                    //if (!url.includes('/cgi-bin/') && !url.includes('/upload/'))
+                    //    cache.put(event.request, response.clone());
                     return response;
                 });
             });

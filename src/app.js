@@ -4,7 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-/* Message format: 'cde|' + 'message body...' or msgpack:
+/* Message format: 'cde|' + msgpack('message body...') or msgpack:
  *  {
  *      b: 'message body...',
  *      f: {
@@ -20,7 +20,7 @@
 import pell from '../lib/pell/pell.js'
 import { L } from './lang/lang.js'
 import {
-    sha256, aes256,
+    sha256, aes256, aes256_blk0_d,
     dat2hex, dat2str, str2dat,
     escape_html, date2num,
     read_file, download, readable_size } from './utils/helper.js'
@@ -67,6 +67,38 @@ function html_blob_conv(html, url_map, cde2blob=true) {
         }
     }
     return doc.body.innerHTML;
+}
+
+async function to_local() {
+    let parser = new DOMParser()
+    let doc = parser.parseFromString(editor.content.innerHTML, "text/html");
+    for (let a of ['src', 'href', 'poster']) {
+        for (let elem of doc.querySelectorAll(`[${a}]`)) {
+            let url = elem.getAttribute(a);
+            if (url.search("blob:") == 0)
+                continue;
+            console.log('to_local:', url);
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const ab = await new Response(blob).arrayBuffer();
+                const u8a = new Uint8Array(ab);
+                let sha = await sha256(u8a);
+                let name = `_${Object.keys(out_prj.f).length+1}.${blob.type.split('/')[1]}`;
+                out_prj_url_map[name] = URL.createObjectURL(blob);
+                out_prj.f[name] = {'type': blob.type, 'data': u8a};
+                elem.setAttribute(a, out_prj_url_map[name]);
+            } catch (e) {
+                alert(`${L('Download resource error')}: ${url}: ${e}`);
+            }
+        }
+    }
+    editor.content.innerHTML = doc.body.innerHTML;
+    out_prj.b = html_blob_conv(editor.content.innerHTML, out_prj_url_map, false);
+    await db.set('tmp', 'b', out_prj.b);
+    await db.set('tmp', 'f', out_prj.f);
+    update_out_files();
+    alert(L('OK'));
 }
 
 
@@ -150,7 +182,7 @@ window.addEventListener('load', async function() {
         location.href = location.href.replace("http://", "https://");
     }
 
-    await decrypt();
+    await decrypt(location.hash.slice(1));
     init_sw();
 });
 
@@ -342,12 +374,12 @@ async function encrypt(method='show_url') {
     const combined = new Uint8Array([...header, ...content]);
     const out = await aes256(combined, key);
     document.getElementById('show_out_url').innerHTML = '';
-    
+
     if (method.search('url') >= 0 && out.length >= 4000) {
         if (!confirm(L('Data is too large for URL encoding, continue?')))
             return;
     }
-    
+
     if (method == 'share_url') {
         let b64 = base64js.fromByteArray(out);
         navigator.share({ url: `${location.origin+location.pathname}#${b64}` });
@@ -402,41 +434,47 @@ async function encrypt(method='show_url') {
 
 async function _decrypt(dat, pw) {
     let key = await sha256(str2dat(pw));
-    let combined;
+    let content;
     try {
-        combined = await aes256(dat, key, 'decrypt');
+        let blk0 = await aes256_blk0_d(dat.slice(0, 16), key); // try to decrypt the first block
+        let header = blk0.slice(0, 4);
+        if (dat2str(header) != 'cde|')
+            return null;
+        let combined = await aes256(dat, key, 'decrypt');
+        content = combined.slice(4);
     } catch (e) {
+        console.log('decrypt err');
         return null;
     }
-    let header = combined.slice(0, 4);
-    let content = combined.slice(4);
-    if (dat2str(header) != 'cde|')
-        return null;
-    let ret;
+
     try {
-        ret = msgpack.decode(content);
+        return msgpack.decode(content);
     } catch (e) {
         console.log('msgpack decode err');
         return null;
     }
-    return ret;
 }
 
-async function decrypt(dat=null) {
-    if (!dat) {
-        let b64 = location.hash.slice(1);
+async function decrypt(dat) {
+    if (typeof dat == 'string') {
+        let str = dat;
         /*
-        if (!b64) {
+        if (!str) {
             let c = await navigator.clipboard.readText();
             let hash_pos = c.search('#');
             if (hash_pos < 0)
                 return;
-            b64 = c.slice(hash_pos + 1);
+            str = c.slice(hash_pos + 1);
         } */
-        if (!b64)
+        if (!str)
             return;
+        if (str.startsWith('+')) {
+            await fetch_remote(str.slice(1));
+            return;
+        }
+
         try {
-            dat = base64js.toByteArray(b64);
+            dat = base64js.toByteArray(str);
         } catch (e) {
             alert(L('The Base64 string is invalid'));
             return;
@@ -446,9 +484,9 @@ async function decrypt(dat=null) {
     let pw = null;
     let pw_index = -1;
     let ret;
-    for (let i = 0; i < pw_list.length; i++) { // escape
+    for (let i = 0; i < pw_list.length; i++) {
         pw = pw_list[i];
-        ret = await _decrypt(dat, pw, true);
+        ret = await _decrypt(dat, pw);
         if (ret) {
             pw_index = i;
             break;
@@ -459,9 +497,11 @@ async function decrypt(dat=null) {
             pw = prompt(L('No password suitable, add new password:'));
             if (!pw)
                 return;
-            ret = await _decrypt(dat, pw, true);
-            if (ret)
+            ret = await _decrypt(dat, pw);
+            if (ret) {
+                modal_close('modal_fetch');
                 break;
+            }
         }
         await _add_passwd(pw);
         pw_index = 0;
@@ -489,6 +529,65 @@ async function decrypt(dat=null) {
     document.getElementById('in_plaintext').innerHTML = html_blob_conv(in_prj.b, in_prj_url_map);
 }
 
+async function fetch_remote(url) {
+    modal_open('modal_fetch');
+    let controller = new AbortController();
+    document.getElementById('fetch_progress').value = 0;
+    document.getElementById('fetch_progress_text').innerHTML = '0%';
+    document.getElementById('fetch_size').innerHTML = '';
+    document.getElementById('fetch_status').innerHTML = '';
+    document.getElementById("fetch_ok").disabled = true;
+    for (let elem of document.getElementsByName('fetch_cancel')) {
+        elem.onclick = () => {
+            modal_close('modal_fetch');
+            controller.abort();
+        }
+    }
+    let response;
+    try {
+        response = await fetch(url, {signal: controller.signal});
+    } catch (e) {
+        document.getElementById('fetch_status').innerHTML = `${L('Error')}: ${e}`;
+        return;
+    }
+    const reader = response.body.getReader();
+    const total_len = +response.headers.get('Content-Length');
+    let received_len = 0;
+    let chunks = [];
+    while(true) {
+        try {
+            const {done, value} = await reader.read();
+            if (done)
+                break;
+            chunks.push(value);
+            received_len += value.length;
+            if (total_len > 0) {
+                let progress = Math.round(received_len / total_len * 100);
+                document.getElementById('fetch_progress').value = progress;
+                document.getElementById('fetch_progress_text').innerHTML = `${progress}%`;
+            }
+            document.getElementById('fetch_size').innerHTML =
+                    `${L('Received')} ${readable_size(received_len)} / ${readable_size(total_len)}`;
+        } catch (e) {
+            console.log('fetch read catch', e);
+            document.getElementById('fetch_status').innerHTML = `| ${L('Error')}: ${e}`;
+            return;
+        }
+    }
+    if (response.status !== 200) {
+        document.getElementById('fetch_status').innerHTML = `| ${L('Error')}: ${response.status}`;
+        return;
+    }
+    let dat = new Uint8Array(received_len);
+    let pos = 0;
+    for(let chunk of chunks) {
+        dat.set(chunk, pos);
+        pos += chunk.length;
+    }
+    document.getElementById('fetch_status').innerHTML = `| ${L('Done!')}`;
+    document.getElementById("fetch_ok").disabled = false;
+    await decrypt(dat);
+}
 
 document.getElementById('in_add_file').onchange = async function() {
     if (!this.files.length)
@@ -505,16 +604,7 @@ document.getElementById('in_add_text').onclick = async function() {
     let hash_pos = str.search('#');
     if (hash_pos >= 0)
         str = str.slice(hash_pos + 1);
-    if (!str)
-        return null;
-    let dat;
-    try {
-        dat = base64js.toByteArray(str);
-    } catch (e) {
-        alert(L('The Base64 string is invalid'));
-        return;
-    }
-    await decrypt(dat);
+    await decrypt(str);
 };
 
 document.getElementById('re_edit').onclick = async function() {
@@ -541,6 +631,7 @@ document.getElementById('share_url').onclick = async () => await encrypt('share_
 document.getElementById('show_url').onclick = async () => await encrypt('show_url');
 document.getElementById('share_file').onclick = async () => await encrypt('share_file');
 document.getElementById('download_file').onclick = async () => await encrypt('download_file');
+document.getElementById('to_local').onclick = async () => await to_local();
 
 window.modal_open = id => document.getElementById(id).classList.add('is-active');
 window.modal_close = id => document.getElementById(id).classList.remove('is-active');
