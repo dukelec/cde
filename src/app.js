@@ -89,7 +89,8 @@ async function to_local() {
                 out_prj.f[name] = {'type': blob.type, 'data': u8a};
                 elem.setAttribute(a, out_prj_url_map[name]);
             } catch (e) {
-                alert(`${L('Download resource error')}: ${url}: ${e}`);
+                if (!confirm(`${L('Download resource error, continue?\n(Please try browser plug-ins e.g. CORS Unblock.)')}\n${url}: ${e}`))
+                    return;
             }
         }
     }
@@ -469,7 +470,10 @@ async function decrypt(dat) {
         if (!str)
             return;
         if (str.startsWith('+')) {
-            await fetch_remote(str.slice(1));
+            if (str.startsWith('+http'))
+                await fetch_remote(str.slice(1));
+            else
+                await fetch_remote('https://' + str.slice(1));
             return;
         }
 

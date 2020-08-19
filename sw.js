@@ -6,7 +6,7 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.10';
+var cache_name = 'cde-1.11';
 var cache_files = [
     "/",
     "/img/icon/fontello.css",
