@@ -6,7 +6,7 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.10';
+var cache_name = 'cde-1.15';
 var cache_files = [
     "/cde/",
     "/cde/img/icon/fontello.css",
@@ -23,7 +23,8 @@ var cache_files = [
     "/cde/lib/pell/pell.js",
     "/cde/lib/bulma.min.css",
     "/cde/lib/msgpack.min.js",
-    "/cde/lib/base64js.min.js"
+    "/cde/lib/base64js.min.js",
+    "/cde/lib/anchorme.min.js"
 ];
 
 self.addEventListener('install', function(event) {
@@ -59,14 +60,15 @@ self.addEventListener('activate', function(event) {
                     // Return true if you want to remove this cache,
                     // but remember that caches are shared across
                     // the whole origin
-                    if (cache_name == name) {
-                        console.log(`sw: avoid rm: ${name}`);
-                        return false;
-                    } else {
+                    //if (cache_name == name) {
+                    //    console.log(`sw: avoid rm: ${name}`);
+                    //    return false;
+                    //} else {
                         console.log(`sw: remove: ${name}`);
                         return true;
-                    }
+                    //}
                 }).map(function(name) {
+                    console.log(`sw: del: ${name}`);
                     return caches.delete(name);
                 })
             );

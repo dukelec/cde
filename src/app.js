@@ -23,12 +23,14 @@ import {
     sha256, aes256, aes256_blk0_d,
     dat2hex, dat2str, str2dat,
     escape_html, date2num,
-    read_file, download, readable_size } from './utils/helper.js'
+    read_file, download,
+    readable_size, linkable } from './utils/helper.js'
 import { Idb } from './utils/idb.js';
 
 
 let first_install = false;
 let editor;
+let in_plaintext_ori = ''; // before convert links by anchorme
 
 let db = null;
 let pw_list = []; // password list
@@ -89,7 +91,8 @@ async function to_local() {
                 out_prj.f[name] = {'type': blob.type, 'data': u8a};
                 elem.setAttribute(a, out_prj_url_map[name]);
             } catch (e) {
-                alert(`${L('Download resource error')}: ${url}: ${e}`);
+                if (!confirm(`${L('Download resource error, continue?\n(Please try browser plug-ins e.g. CORS Unblock.)')}\n${url}: ${e}`))
+                    return;
             }
         }
     }
@@ -469,7 +472,10 @@ async function decrypt(dat) {
         if (!str)
             return;
         if (str.startsWith('+')) {
-            await fetch_remote(str.slice(1));
+            if (str.startsWith('+http') || str.startsWith('+/'))
+                await fetch_remote(str.slice(1));
+            else
+                await fetch_remote('https://' + str.slice(1));
             return;
         }
 
@@ -526,7 +532,9 @@ async function decrypt(dat) {
         in_prj_url_map[name] = URL.createObjectURL(blob);
     }
     update_in_files();
-    document.getElementById('in_plaintext').innerHTML = html_blob_conv(in_prj.b, in_prj_url_map);
+    in_plaintext_ori = html_blob_conv(in_prj.b, in_prj_url_map);
+    document.getElementById('in_plaintext').innerHTML = in_plaintext_ori;
+    linkable(document.getElementById('in_plaintext'));
 }
 
 async function fetch_remote(url) {
@@ -610,7 +618,7 @@ document.getElementById('in_add_text').onclick = async function() {
 document.getElementById('re_edit').onclick = async function() {
     out_prj_url_map = in_prj_url_map;
     out_prj = in_prj;
-    editor.content.innerHTML = document.getElementById('in_plaintext').innerHTML;
+    editor.content.innerHTML = in_plaintext_ori;
     update_out_files();
     await db.set('tmp', 'b', out_prj.b);
     await db.set('tmp', 'f', out_prj.f);
@@ -620,7 +628,9 @@ document.getElementById('re_edit').onclick = async function() {
 document.getElementById('preview').onclick = async function() {
     in_prj_url_map = out_prj_url_map;
     in_prj = out_prj;
-    document.getElementById('in_plaintext').innerHTML = editor.content.innerHTML;
+    in_plaintext_ori = editor.content.innerHTML;
+    document.getElementById('in_plaintext').innerHTML = in_plaintext_ori;
+    linkable(document.getElementById('in_plaintext'));
     update_in_files();
     document.getElementById('in_cur_pw').innerHTML = '--';
     alert(L('OK'));

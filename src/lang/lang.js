@@ -41,7 +41,7 @@ let trans_hk = {
     'Done!': '完成！',
     'Error': '出錯',
 
-    'Download resource error': '下載資源出錯',
+    'Download resource error, continue?\n(Please try browser plug-ins e.g. CORS Unblock.)': '下載資源出錯，繼續？\n（請嘗試瀏覽器插件例如 CORS Unblock.）',
     'Error: only support https': '錯誤：只支持 https',
     'The Base64 string is invalid': 'Base64 字符串無效',
     'File name, use date if empty': '文件名，留空使用日期',
@@ -100,7 +100,7 @@ let trans_cn = {
     'Done!': '完成！',
     'Error': '出错',
 
-    'Download resource error': '下载资源出错',
+    'Download resource error, continue?\n(Please try browser plug-ins e.g. CORS Unblock.)': '下载资源出错，继续？\n（请尝试浏览器插件例如 CORS Unblock.）',
     'Error: only support https': '错误：只支持 https',
     'The Base64 string is invalid': 'Base64 字符串无效',
     'File name, use date if empty': '文件名，留空使用日期',
