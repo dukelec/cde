@@ -6,7 +6,7 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.13';
+var cache_name = 'cde-1.14';
 var cache_files = [
     "/",
     "/img/icon/fontello.css",
@@ -60,14 +60,15 @@ self.addEventListener('activate', function(event) {
                     // Return true if you want to remove this cache,
                     // but remember that caches are shared across
                     // the whole origin
-                    if (cache_name == name) {
-                        console.log(`sw: avoid rm: ${name}`);
-                        return false;
-                    } else {
+                    //if (cache_name == name) {
+                    //    console.log(`sw: avoid rm: ${name}`);
+                    //    return false;
+                    //} else {
                         console.log(`sw: remove: ${name}`);
                         return true;
-                    }
+                    //}
                 }).map(function(name) {
+                    console.log(`sw: del: ${name}`);
                     return caches.delete(name);
                 })
             );
