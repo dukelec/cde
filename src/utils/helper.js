@@ -132,11 +132,32 @@ function readable_size(bytes, si=true) {
     return bytes.toFixed(1)+' '+units[u];
 }
 
+function walk(el, fn) {
+    for (let i = 0, len = el.childNodes.length; i < len; i++) {
+        let node = el.childNodes[i];
+        if (node.nodeType === 3)
+            fn(node);
+        else if (node.nodeType === 1 && node.nodeName !== "SCRIPT")
+            walk(node, fn);
+    }
+}
+
+function linkable(el) {
+    walk(el, function(n) {
+        let replacementNode = document.createElement('span');
+        let newHtml = anchorme(n.textContent);
+        n.parentNode.insertBefore(replacementNode, n);
+        n.parentNode.removeChild(n);
+        replacementNode.outerHTML = newHtml;
+    });
+}
+
 export {
     read_file, load_img, date2num,
     sha256, aes256, aes256_blk0_d,
     dat2hex, dat2str, str2dat,
     cpy,
     download,
-    escape_html, readable_size
+    escape_html, readable_size,
+    walk, linkable
 };

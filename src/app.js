@@ -23,7 +23,8 @@ import {
     sha256, aes256, aes256_blk0_d,
     dat2hex, dat2str, str2dat,
     escape_html, date2num,
-    read_file, download, readable_size } from './utils/helper.js'
+    read_file, download,
+    readable_size, linkable } from './utils/helper.js'
 import { Idb } from './utils/idb.js';
 
 
@@ -532,7 +533,8 @@ async function decrypt(dat) {
     }
     update_in_files();
     in_plaintext_ori = html_blob_conv(in_prj.b, in_prj_url_map);
-    document.getElementById('in_plaintext').innerHTML = anchorme(in_plaintext_ori);
+    document.getElementById('in_plaintext').innerHTML = in_plaintext_ori;
+    linkable(document.getElementById('in_plaintext'));
 }
 
 async function fetch_remote(url) {
@@ -627,7 +629,8 @@ document.getElementById('preview').onclick = async function() {
     in_prj_url_map = out_prj_url_map;
     in_prj = out_prj;
     in_plaintext_ori = editor.content.innerHTML;
-    document.getElementById('in_plaintext').innerHTML = anchorme(in_plaintext_ori);
+    document.getElementById('in_plaintext').innerHTML = in_plaintext_ori;
+    linkable(document.getElementById('in_plaintext'));
     update_in_files();
     document.getElementById('in_cur_pw').innerHTML = '--';
     alert(L('OK'));
