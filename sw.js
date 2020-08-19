@@ -6,7 +6,7 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.11';
+var cache_name = 'cde-1.12';
 var cache_files = [
     "/",
     "/img/icon/fontello.css",
@@ -23,7 +23,8 @@ var cache_files = [
     "/lib/pell/pell.js",
     "/lib/bulma.min.css",
     "/lib/msgpack.min.js",
-    "/lib/base64js.min.js"
+    "/lib/base64js.min.js",
+    "/lib/anchorme.min.js"
 ];
 
 self.addEventListener('install', function(event) {

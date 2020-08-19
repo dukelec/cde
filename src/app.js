@@ -29,6 +29,7 @@ import { Idb } from './utils/idb.js';
 
 let first_install = false;
 let editor;
+let in_plaintext_ori = ''; // before convert links by anchorme
 
 let db = null;
 let pw_list = []; // password list
@@ -530,7 +531,8 @@ async function decrypt(dat) {
         in_prj_url_map[name] = URL.createObjectURL(blob);
     }
     update_in_files();
-    document.getElementById('in_plaintext').innerHTML = html_blob_conv(in_prj.b, in_prj_url_map);
+    in_plaintext_ori = html_blob_conv(in_prj.b, in_prj_url_map);
+    document.getElementById('in_plaintext').innerHTML = anchorme(in_plaintext_ori);
 }
 
 async function fetch_remote(url) {
@@ -614,7 +616,7 @@ document.getElementById('in_add_text').onclick = async function() {
 document.getElementById('re_edit').onclick = async function() {
     out_prj_url_map = in_prj_url_map;
     out_prj = in_prj;
-    editor.content.innerHTML = document.getElementById('in_plaintext').innerHTML;
+    editor.content.innerHTML = in_plaintext_ori;
     update_out_files();
     await db.set('tmp', 'b', out_prj.b);
     await db.set('tmp', 'f', out_prj.f);
@@ -624,7 +626,8 @@ document.getElementById('re_edit').onclick = async function() {
 document.getElementById('preview').onclick = async function() {
     in_prj_url_map = out_prj_url_map;
     in_prj = out_prj;
-    document.getElementById('in_plaintext').innerHTML = editor.content.innerHTML;
+    in_plaintext_ori = editor.content.innerHTML;
+    document.getElementById('in_plaintext').innerHTML = anchorme(in_plaintext_ori);
     update_in_files();
     document.getElementById('in_cur_pw').innerHTML = '--';
     alert(L('OK'));
