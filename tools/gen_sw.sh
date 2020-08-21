@@ -6,15 +6,15 @@ cd "$(dirname "$0")/.."
 
 files="$(find ./ -not -path '*/\.*' -type f)"
 
-echo "    \"$1/\","
 echo "$files" | while read -r line; do
     line="${line:1}"
+    file="$line"
     [[ "$line" == "/httpd.conf" ]] && continue
-    [[ "$line" == "/index.html" ]] && continue
     [[ "$line" == "/Readme.md" ]] && continue
     [[ "$line" == "/sw.js" ]] && continue
     [[ "$line" =~ ^"/tools/" ]] && continue
     [[ "$line" =~ ^"/cgi-bin/" ]] && continue
-    echo "    \"$1$line\","
+    [[ "$line" == "/index.html" ]] && line="/"
+    echo "    \"$1$line\" : \"$(sha256sum "./$file" | awk '{ print $1 }')\","
 done
 
