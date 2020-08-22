@@ -81,7 +81,12 @@ async function to_local() {
                 continue;
             console.log('to_local:', url);
             try {
-                const response = await fetch(url);
+                let loc = new URL(url);
+                if (loc.protocol == 'http:') {
+                    console.log(`to_local: force https: ${loc.href}`)
+                    loc.protocol = 'https:';
+                }
+                const response = await fetch(loc);
                 const blob = await response.blob();
                 const ab = await new Response(blob).arrayBuffer();
                 const u8a = new Uint8Array(ab);

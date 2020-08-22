@@ -6,7 +6,7 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.6';
+var cache_name = 'cde-1.7';
 var cache_files = {
     "/img/icon/fontello.css" : "9143594ce27fc81648d345becdd74ba85cec2b2836908f12789d70e18e38174e",
     "/img/icon/fontello.woff2" : "c6f250032c14345783273890e92bb27611ffc2690afc851a138ac9fe2e275a44",
@@ -15,7 +15,7 @@ var cache_files = {
     "/src/lang/lang.js" : "dfebd527a1c59df65abfcf25c51b4c946b7d702712e9b7d5e2f70f775ca06567",
     "/src/utils/helper.js" : "1b5785547c1742700e56009a96c8059e2be9a94664b59b34b2022bcc7a2d52e1",
     "/src/utils/idb.js" : "c277349bf34bdf1f8610a9d4cb0bcd6aadb5ae22300861cd87e9597ab597d796",
-    "/src/app.js" : "b20c0a35294a0cd6f3207ec1b09b7245b4ed49fb911453c8f3530c985d722122",
+    "/src/app.js" : "c3c22e4118c382a0e92c639664162730428754f3a35aaa84798ccbd72e975b90",
     "/lib/pell/pell.css" : "dd7012f74f875db0c7f6aa447ec86812914991e07cb8b32cd8db669b531f2e27",
     "/lib/pell/actions.js" : "2ad31c233702a0f9a5aa8cb9c66741b7aec7ae110a3dc94c22a2b8b867bc959a",
     "/lib/pell/utilities.js" : "73d5066c77258f034b604863824e1aa9b96304bbf36c906148def635300da60c",
@@ -24,7 +24,7 @@ var cache_files = {
     "/lib/anchorme.min.js" : "87de70486f3fcaded74ac742724f8bf3cefd08b636323c90ee3619f35e958463",
     "/lib/msgpack.min.js" : "c670cb2d82b1285c0b12640ad52919f48ec8c268dd794446b57524ff45a74d1a",
     "/lib/base64js.min.js" : "f549a4c1d0eb4a6140081aea9c009cfff6fc2d0c289336d9e4542a03bf6281f5",
-    "/" : "1c4479b8fb7588beef6578fc386e1618df3b5e77d0fa86dfc0c8de1e4029afde"
+    "/" : "655928c22cd0f22f8f13f214fda2509b9c05044b9c1a711aff619a82e8bccffd"
 };
 
 
@@ -88,7 +88,13 @@ async function handle_request(event) {
             console.warn(`sw: ${k} hash still error: ${sha} != ${cache_files[k]}`);
         }
     } else {
-        response = await fetch(event.request);
+        if (loc.protocol == 'http:') {
+            console.log(`sw: force https: ${loc.href}`)
+            loc.protocol = 'https:';
+            response = await fetch(loc);
+        } else {
+            response = await fetch(event.request);
+        }
     }
     return response;
 }
