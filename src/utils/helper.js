@@ -116,7 +116,7 @@ function escape_html(unsafe) {
          .replace(/'/g, "&#039;");
 }
 
-function readable_size(bytes, si=true) {
+function readable_size(bytes, fixed=3, si=true) {
     var thresh = si ? 1000 : 1024;
     if(Math.abs(bytes) < thresh) {
         return bytes + ' B';
@@ -129,7 +129,7 @@ function readable_size(bytes, si=true) {
         bytes /= thresh;
         ++u;
     } while(Math.abs(bytes) >= thresh && u < units.length - 1);
-    return bytes.toFixed(1)+' '+units[u];
+    return bytes.toFixed(fixed)+' '+units[u];
 }
 
 function walk(el, fn) {

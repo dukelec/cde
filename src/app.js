@@ -599,7 +599,10 @@ async function fetch_remote(url) {
     }
     document.getElementById('fetch_status').innerHTML = `| ${L('Done!')}`;
     document.getElementById("fetch_ok").disabled = false;
-    await decrypt(dat);
+    document.getElementById("fetch_ok").onclick = async () => {
+        await decrypt(dat);
+        modal_close('modal_fetch');
+    };
 }
 
 document.getElementById('in_add_file').onchange = async function() {
