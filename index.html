@@ -78,7 +78,7 @@ let index_template = () => `
 <nav class="navbar is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
         <a href="${location.pathname}" class="navbar-item">
-            <img src="img/icon.png"> &nbsp; <strong>CDEncrypt</strong> &nbsp; <small>v1.17</small>
+            <img src="img/icon.png"> &nbsp; <strong>CDEncrypt</strong> &nbsp; <small>v1.18</small>
         </a>
     </div>
     <div class="navbar-menu">
@@ -257,7 +257,7 @@ let index_template = () => `
             <p><span id="fetch_size"></span> <span id="fetch_status"></span></p>
         </section>
         <footer class="modal-card-foot">
-            <button class="button is-small is-primary" onclick="modal_close('modal_fetch')" id="fetch_ok">${L('OK')}</button>
+            <button class="button is-small is-primary" id="fetch_ok">${L('OK')}</button>
             <button class="button is-small" name="fetch_cancel">${L('Cancel')}</button>
         </footer>
     </div>
