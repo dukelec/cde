@@ -558,6 +558,7 @@ async function fetch_remote(url) {
     }
     let response;
     try {
+        console.log(`fetch_remote: ${url}`);
         response = await fetch(url, {signal: controller.signal});
     } catch (e) {
         document.getElementById('fetch_status').innerHTML = `${L('Error')}: ${e}`;
