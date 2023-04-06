@@ -29,7 +29,7 @@ function anykey_exit() {
 
 if [[ "$1" == "" || "$1" == "-h" || "$1" == "--help" ]]; then
     echo "Usage:"
-    echo "  $0 FILE                 : Toggle mount (to path without file extention)"
+    echo "  $0 FILE                 : Toggle mount"
     echo "  $0 FILE [u]mount [PATH] : Mount / umount, or mount to PATH"
     echo "  $0 FILE new SIZE        : Create image file, units: K/M/G"
     echo "  $0 FILE shrink          : Shrink file size"
