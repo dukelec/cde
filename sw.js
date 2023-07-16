@@ -6,7 +6,7 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.19';
+var cache_name = 'cde-1.20';
 var cache_files = {
     "/cde/img/icon/fontello.css" : "9143594ce27fc81648d345becdd74ba85cec2b2836908f12789d70e18e38174e",
     "/cde/img/icon/fontello.woff2" : "c6f250032c14345783273890e92bb27611ffc2690afc851a138ac9fe2e275a44",
@@ -15,7 +15,7 @@ var cache_files = {
     "/cde/src/lang/lang.js" : "dfebd527a1c59df65abfcf25c51b4c946b7d702712e9b7d5e2f70f775ca06567",
     "/cde/src/utils/helper.js" : "6e16f8705d2d690ed26ffbc9bb852246ce689bb966756ea0f0fc0bf3aadc728f",
     "/cde/src/utils/idb.js" : "c277349bf34bdf1f8610a9d4cb0bcd6aadb5ae22300861cd87e9597ab597d796",
-    "/cde/src/app.js" : "c6501bb372cb306a0bc742c634c823509e435dafc02a5aac884d4aa9ac0a97b4",
+    "/cde/src/app.js" : "9f89d878826d200db130a7fb6bc5be383325e55bb47316d2a8cf84e12dc4a5dd",
     "/cde/lib/pell/pell.css" : "dd7012f74f875db0c7f6aa447ec86812914991e07cb8b32cd8db669b531f2e27",
     "/cde/lib/pell/actions.js" : "2ad31c233702a0f9a5aa8cb9c66741b7aec7ae110a3dc94c22a2b8b867bc959a",
     "/cde/lib/pell/utilities.js" : "73d5066c77258f034b604863824e1aa9b96304bbf36c906148def635300da60c",
@@ -24,7 +24,7 @@ var cache_files = {
     "/cde/lib/anchorme.min.js" : "87de70486f3fcaded74ac742724f8bf3cefd08b636323c90ee3619f35e958463",
     "/cde/lib/msgpack.min.js" : "c670cb2d82b1285c0b12640ad52919f48ec8c268dd794446b57524ff45a74d1a",
     "/cde/lib/base64js.min.js" : "f549a4c1d0eb4a6140081aea9c009cfff6fc2d0c289336d9e4542a03bf6281f5",
-    "/cde/" : "4a91b2fcc5b89bb2bf702ff5ed290ced816e497a89eca3de1c35276a770bc1dd"
+    "/cde/" : "13c7de9fe4cd4bf6626e4f08c134ab70c16dd738075f21d6d3dde5d9e0dcee56"
 };
 
 

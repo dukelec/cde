@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Usage: $0 passwd input out [-d]"
+echo "Usage: $0 passwd input out [-d] # -d for decryption"
 set -e
 
 [[ "$#" != "3" && "$#" != "4" ]] && exit

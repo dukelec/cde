@@ -476,8 +476,8 @@ async function decrypt(dat) {
         } */
         if (!str)
             return;
-        if (str.startsWith('+')) {
-            if (str.startsWith('+http') || str.startsWith('+/'))
+        if (str.startsWith(':')) {
+            if (str.startsWith(':http') || str.startsWith(':/') || str.startsWith(':.'))
                 await fetch_remote(str.slice(1));
             else
                 await fetch_remote('https://' + str.slice(1));
