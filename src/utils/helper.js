@@ -57,12 +57,13 @@ async function aes256_blk0_d(dat, key) {
         pad_dat[i] = 16; // PKCS#7
     let pad_tmp = new Uint8Array(await crypto.subtle.encrypt({name: 'AES-CBC', iv: dat}, _key, pad_dat));
     let pad = pad_tmp.slice(0, 16);
-    let dat_pad = concat_dat(dat, pad);
+    let dat_pad = concat_dat([dat, pad]);
     return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-CBC', iv: iv}, _key, dat_pad));
 }
 
 // avoid [...a, ...b], which is very slow and memory hungry for large data
-function concat_dat(...arrays) {
+// arrays: a list, not spread arguments, which may exceed the argument limit for many chunks
+function concat_dat(arrays) {
     let len = arrays.reduce((sum, a) => sum + a.length, 0);
     let ret = new Uint8Array(len);
     let pos = 0;
@@ -128,6 +129,52 @@ function download(data, fileName='dat.bin', mimeType='application/octet-stream')
     download_url(url, fileName);
     setTimeout(function() { return window.URL.revokeObjectURL(url); }, 1000);
 };
+
+// text: string or Promise<string>, must be called synchronously in the user gesture
+async function copy_text(text) {
+    const text_p = Promise.resolve(text);
+    // ClipboardItem with a promise keeps the user gesture across async work (needed by safari)
+    if (window.ClipboardItem && navigator.clipboard?.write) {
+        try {
+            const blob_p = text_p.then(text => new Blob([text], {type: 'text/plain'}));
+            await navigator.clipboard.write([new ClipboardItem({'text/plain': blob_p})]);
+            return true;
+        } catch (e) {
+            console.log('clipboard.write err:', e);
+        }
+    }
+    text = await text_p;
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (e) {
+        console.log('clipboard.writeText err:', e);
+    }
+    // fallback for webview without clipboard api
+    let ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style = 'position: fixed; top: 0; left: 0; opacity: 0;';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length); // ios
+    let ok = false;
+    try {
+        ok = document.execCommand('copy');
+    } catch (e) {
+        console.log('execCommand copy err:', e);
+    }
+    ta.remove();
+    return ok;
+}
+
+function select_text(elem) {
+    let range = document.createRange();
+    range.selectNodeContents(elem);
+    let sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
 
 function escape_html(unsafe) {
     return unsafe
@@ -242,6 +289,8 @@ function sanitize_node(el) {
             let name = attr.name.toLowerCase();
             if (!SAFE_ATTRS.has(name) || (name in SAFE_PROTOCOLS && !safe_url(attr.value, name)))
                 node.removeAttribute(attr.name);
+            else if (name == 'style' && /url\s*\(|expression\s*\(|@import|behavior\s*:/i.test(attr.value))
+                node.removeAttribute(attr.name); // no external resource loading from css
         }
         // attached files must be downloaded, not opened in the app origin
         if (tag == 'a' && /^(blob|cde):/i.test(node.getAttribute('href')?.trim() || '') && !node.hasAttribute('download'))
@@ -262,7 +311,7 @@ export {
     concat_dat, b64_to_dat,
     dat2hex, dat2str, str2dat,
     cpy,
-    download,
+    download, copy_text, select_text,
     escape_html, readable_size,
     walk, linkable, sanitize_doc
 };

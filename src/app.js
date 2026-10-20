@@ -25,7 +25,8 @@ import {
     dat2hex, dat2str, str2dat,
     escape_html, date2num,
     read_file, download,
-    readable_size, linkable, sanitize_doc } from './utils/helper.js'
+    readable_size, linkable, sanitize_doc,
+    copy_text, select_text } from './utils/helper.js'
 import { Idb } from './utils/idb.js';
 
 
@@ -184,6 +185,7 @@ window.addEventListener('load', async function() {
     editor = pell.init({
         element: document.getElementById('editor'),
         onChange: () => { // save after typing pauses
+            enc_reset();
             clearTimeout(save_timer);
             save_timer = setTimeout(save_out_b, 500);
         },
@@ -277,6 +279,7 @@ document.getElementById('out_add_file').onchange = async function() {
 };
 
 function update_out_files() {
+    enc_reset();
     let list = document.getElementById('out_files');
     list.innerHTML = '';
 
@@ -305,6 +308,7 @@ function update_out_files() {
                 let html = `<video controls><source src="${out_prj_url_map[name]}"></video>`;
                 pell.exec('insertHTML', html)
             }
+            enc_reset();
         };
         list.lastElementChild.getElementsByTagName("button")[1].onclick = async function() {
             URL.revokeObjectURL(out_prj_url_map[name]);
@@ -431,6 +435,7 @@ async function add_passwd() {
 }
 
 function update_out_pw() {
+    enc_reset();
     if (out_pw) {
         let i = pw_list.findIndex(val => val == out_pw);
         document.getElementById('out_pw').innerHTML = `#${i}: ${escape_html(pw_short(out_pw))}`;
@@ -439,9 +444,25 @@ function update_out_pw() {
     }
 }
 
-// share_url, show_url, share_file, download_file
-async function encrypt(method='show_url') {
-    await save_out_b();
+const URL_MAX = 4000;
+const OUT_BTNS = ['share_url', 'show_url', 'share_file', 'download_file'];
+let enc_out = null; // encrypted data for the output buttons, null if out of date
+let enc_ver = 0;
+
+// call on any change of content, files or password
+function enc_reset() {
+    enc_out = null;
+    enc_ver++;
+    for (let id of OUT_BTNS)
+        document.getElementById(id).disabled = true;
+    document.getElementById('enc_status').textContent = '--';
+    document.getElementById('show_out_url').textContent = '';
+}
+
+// encrypt first, then the output buttons can run synchronously in the user gesture (needed by safari)
+async function encrypt() {
+    // no await before taking enc_ver, any later change makes the result out of date
+    save_out_b().catch(e => console.error('save_out_b err:', e)); // out_prj.b is updated synchronously, db writing in background
     if (!out_pw) {
         alert(L('Please set password'));
         return;
@@ -450,68 +471,90 @@ async function encrypt(method='show_url') {
         alert(L('Please input text'));
         return;
     }
-    if (method.startsWith('share') && !navigator.share) {
+    enc_reset();
+    let ver = enc_ver;
+    let status = document.getElementById('enc_status');
+    status.textContent = L('Encrypting...');
+    const out = await encrypt_dat();
+    if (ver != enc_ver) // changed while encrypting
+        return;
+    enc_out = out;
+    for (let id of OUT_BTNS)
+        document.getElementById(id).disabled = false;
+    status.textContent = `${L('Encrypted')}: ${readable_size(out.length)}`;
+    if (out_url_len() >= URL_MAX)
+        status.textContent += ` | ${L('The URL is too long and may not work in some apps')}`;
+}
+
+function out_url() {
+    return `${location.origin+location.pathname}#${base64js.fromByteArray(enc_out)}`;
+}
+
+function out_url_len() {
+    return (location.origin+location.pathname).length + 1 + Math.ceil(enc_out.length / 3) * 4;
+}
+
+function out_fname() {
+    return document.getElementById('out_fname').value || date2num();
+}
+
+async function show_url() {
+    let elem = document.getElementById('show_out_url');
+    let url = out_url();
+    elem.textContent = url;
+    let ok = await copy_text(url);
+    if (!ok)
+        select_text(elem); // for manual copy
+    alert(L(ok ? 'Copy to clipboard successed' : 'Copy to clipboard failed'));
+}
+
+async function share_url() {
+    if (!navigator.share) {
         alert(L('Sharing is not supported'));
         return;
     }
+    let url = out_url();
+    await share({ url: url }, () => {
+        let elem = document.getElementById('show_out_url');
+        elem.textContent = url;
+        select_text(elem);
+    });
+}
 
+async function share_file() {
+    let file = new File([enc_out], `${out_fname()}.txt`, {type: 'text/plain'});
+    console.log("share file:", file);
+    let data = {files: [file]};
+
+    if (!navigator.canShare || !navigator.canShare(data)) {
+        // Search: Web Share API - Level 2, permitted extensions
+        // only image, video, audio and text files can be shared
+        alert(L('File sharing is not supported'));
+        return;
+    }
+    await share(data);
+}
+
+async function encrypt_dat() {
     const key = await sha256(str2dat(out_pw));
     const header = str2dat('cde|');
     const content = msgpack.encode(Object.keys(out_prj.f).length ? out_prj : out_prj.b);
-    const combined = concat_dat(header, content);
-    const out = await aes256(combined, key);
-    document.getElementById('show_out_url').textContent = '';
+    return await aes256(concat_dat([header, content]), key);
+}
 
-    if (method.endsWith('url')) {
-        let url = `${location.origin+location.pathname}#${base64js.fromByteArray(out)}`;
-        if (url.length >= 4000 && !confirm(L('Data is too large for URL encoding, continue?')))
+async function share(data, on_fail = null) {
+    try {
+        await navigator.share(data);
+        console.log('Successfully sent share');
+    } catch (e) {
+        if (e.name == 'AbortError') // canceled by user
             return;
-        if (method == 'share_url') {
-            navigator.share({ url: url });
-            return;
-        }
-        document.getElementById('show_out_url').textContent = url;
-        navigator.clipboard.writeText(url).then(function() {
-            alert(L('Copy to clipboard successed'));
-        }, function() {
-            alert(L('Copy to clipboard failed'));
-        });
-        return;
+        console.log('Error sharing: ', e);
+        if (on_fail)
+            on_fail();
+        alert(`${L('Sharing failed')}: ${e.name}`);
     }
-
-    let fname = document.getElementById('out_fname').value;
-    if (!fname)
-        fname = date2num();
-
-    if (method == 'share_file') {
-        fname += '.txt';
-
-        let file = new File([out], fname, {type: 'text/plain'});
-        console.log("share file:", file);
-        let data = {files: [file]};
-
-        if (!navigator.canShare || !navigator.canShare(data)) {
-            // Search: Web Share API - Level 2, permitted extensions
-            // only image, video, audio and text files can be shared
-            alert(L('File sharing is not supported'));
-            return;
-        }
-
-        navigator.share(data)
-        .then(() => {
-            console.log('Successfully sent share');
-        })
-        .catch((err) => {
-            console.log('Error sharing: ', err);
-        });
-        return;
-    }
-
-    if (method == 'download_file') {
-        download(out, fname);
-        return;
-    }
-};
+}
 
 async function _decrypt(dat, pw) {
     let key = await sha256(str2dat(pw));
@@ -681,7 +724,7 @@ async function fetch_remote(url) {
             return;
         }
     }
-    let dat = concat_dat(...chunks);
+    let dat = concat_dat(chunks);
     document.getElementById('fetch_status').innerHTML = `| ${L('Done!')}`;
     document.getElementById("fetch_ok").disabled = false;
     document.getElementById("fetch_ok").onclick = async () => {
@@ -728,10 +771,12 @@ document.getElementById('preview').onclick = async function() {
 };
 
 
-document.getElementById('share_url').onclick = async () => await encrypt('share_url');
-document.getElementById('show_url').onclick = async () => await encrypt('show_url');
-document.getElementById('share_file').onclick = async () => await encrypt('share_file');
-document.getElementById('download_file').onclick = async () => await encrypt('download_file');
+document.getElementById('encrypt').onclick = encrypt;
+// keep synchronous before copy / share
+document.getElementById('share_url').onclick = () => enc_out && share_url();
+document.getElementById('show_url').onclick = () => enc_out && show_url();
+document.getElementById('share_file').onclick = () => enc_out && share_file();
+document.getElementById('download_file').onclick = () => enc_out && download(enc_out, out_fname());
 document.getElementById('to_local').onclick = async () => await to_local();
 
 function modal_open(id) {

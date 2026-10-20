@@ -110,6 +110,10 @@ let index_template = () => `
                 <button class="button is-small" data-modal-open="modal_passwd_sel">
                     <i class="fas fa-key"></i> &nbsp; ${L('Password')} &nbsp; <span id="out_pw">--</span>
                 </button>
+                <button class="button is-small is-primary" id="encrypt">
+                    &#128274; &nbsp; ${L('Encrypt')}
+                </button>
+                <span class="is-size-7" id="enc_status">--</span>
             </div>
             <div class="column">
                 <input class="input" type="text" id="out_fname" placeholder="${L('File name, use date if empty')}">
@@ -117,18 +121,18 @@ let index_template = () => `
         </div>
         <div class="columns">
             <div class="column">
-                <button class="button is-small" id="share_url">
+                <button class="button is-small" id="share_url" disabled>
                     <i class="fas fa-share-alt"></i> &nbsp; ${L('Share URL')}
                 </button>
-                <button class="button is-small" id="show_url">
+                <button class="button is-small" id="show_url" disabled>
                     <i class="far fa-clipboard"></i> &nbsp; ${L('Show URL')}
                 </button>
             </div>
             <div class="column">
-                <button class="button is-small" id="share_file">
+                <button class="button is-small" id="share_file" disabled>
                     <i class="fas fa-share-alt"></i> &nbsp; ${L('Share File')}
                 </button>
-                <button class="button is-small" id="download_file">
+                <button class="button is-small" id="download_file" disabled>
                     <i class="fas fa-file-download"></i> &nbsp; ${L('Download File')}
                 </button>
             </div>
