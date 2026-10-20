@@ -57,6 +57,7 @@ let trans_hk = {
     'No password suitable, add new password:': '無匹配的密碼，增加新密碼：',
     'Input URL or Base64 string:': '請輸入 URL 或 Base64 字串：',
     'New password:': '新密碼：',
+    'Invalid data format': '數據格式無效',
 
     'OK': '好',
     'Switching APP to new version.': '切換 APP 至新版本'
@@ -116,6 +117,7 @@ let trans_cn = {
     'No password suitable, add new password:': '无匹配的密码，增加新密码：',
     'Input URL or Base64 string:': '请输入 URL 或 Base64 字串：',
     'New password:': '新密码：',
+    'Invalid data format': '数据格式无效',
 
     'OK': '好',
     'Switching APP to new version.': '切换 APP 至新版本'

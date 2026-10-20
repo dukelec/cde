@@ -10,11 +10,12 @@
 # KEY: sha256sum of password string
 # IV: sector index (little-endian, sector size: 512 bytes)
 
-XTERM=xterm
-which gnome-terminal &> /dev/null && XTERM="gnome-terminal"
-which xfce4-terminal &> /dev/null && XTERM="xfce4-terminal"
+# pass arguments as argv, no re-parsing, so paths with spaces are kept
+XTERM=(xterm -e)
+which gnome-terminal &> /dev/null && XTERM=(gnome-terminal --)
+which xfce4-terminal &> /dev/null && XTERM=(xfce4-terminal -x)
 
-tty -s; [ $? -ne 0 ] && { $XTERM -e "bash -c \"$0 $@\""; exit; }
+tty -s || { "${XTERM[@]}" "$0" "$@"; exit; }
 [ $UID -ne 0 ] && { echo "restart as root"; sudo _uid=$UID "$0" "$@"; exit $?; }
 [ "$_uid" == "" ] && _uid=0
 set -e
@@ -44,6 +45,7 @@ FILE_PATH="$(readlink -f "$1")"
 FILE_DIR="$(dirname "$FILE_PATH")"
 FILE_NAME="$(basename "$FILE_PATH")"
 NAME="${FILE_NAME%.*}" # remove file extention
+[ "$NAME" == "" ] && { echo "Name empty!"; exit 1; }
 
 CMD="$2"
 MAP_EXIST=0
@@ -54,7 +56,6 @@ if [ -b "/dev/mapper/$NAME" ]; then
     MAP_EXIST=1
     MOUNT_DIR="$(lsblk -o MOUNTPOINT -nr "/dev/mapper/$NAME")"
 fi
-[ "$NAME" == "" ] && { echo "Name empty!"; exit 1; }
 
 
 if [ "$CMD" == "new" ]; then
@@ -95,8 +96,8 @@ if [ "$CMD" == "shrink" ]; then
 fi
 
 if [[ "$CMD" == "expand" && "$3" != "" ]]; then
-    file_sz=`stat -c '%s' $FILE_PATH`
-    tgt_sz=`numfmt --from=iec $3`
+    file_sz=`stat -c '%s' "$FILE_PATH"`
+    tgt_sz=`numfmt --from=iec "$3"`
     file_sz_iec=`numfmt --to=iec $file_sz`
     tgt_sz_iec=`numfmt --to=iec $tgt_sz`
     echo "expand: file_sz: $file_sz ($file_sz_iec) -> tgt_sz: $tgt_sz ($tgt_sz_iec)"
@@ -120,7 +121,7 @@ if [[ "$CMD" == "expand" && "$3" != "" ]]; then
 fi
 
 if [ "$CMD" == "passwd" ]; then
-    file_sz=`stat -c '%s' $FILE_PATH`
+    file_sz=`stat -c '%s' "$FILE_PATH"`
     [ "$MOUNT_DIR" == "" ] && { echo "please mount first"; exit 1; }
     [ "$((file_sz))" == "0" ] && { echo "file_sz wrong: $file_sz"; exit 1; }
     [ "$((file_sz % 512))" != "0" ] && { echo "file_sz is not multiple of 512"; exit 1; }
@@ -140,6 +141,7 @@ if [ "$CMD" == "passwd" ]; then
     exe mv "$FILE_PATH".tmp "$FILE_PATH"
     [ "$(ls -A "$MOUNT_DIR")" == "" ] && exe rm -r "$MOUNT_DIR"
     [ "$(ls -A "$MOUNT_DIR".tmp)" == "" ] && exe rm -r "$MOUNT_DIR".tmp
+    echo "note: $FILE_PATH.old can still be opened with the old password, remove it if not needed"
     echo "done"
     exit
 fi

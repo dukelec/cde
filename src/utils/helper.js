@@ -27,9 +27,9 @@ async function load_img(img, url) {
 }
 
 function date2num() {
-    let d = (new Date()).toLocaleString('en-GB');
-    let s = d.split(/[^0-9]/);
-    return `${s[2]}${s[1]}${s[0]}${s[4]}${s[5]}${s[6]}`;
+    let d = new Date();
+    let p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
 async function sha256(dat) {
@@ -57,8 +57,30 @@ async function aes256_blk0_d(dat, key) {
         pad_dat[i] = 16; // PKCS#7
     let pad_tmp = new Uint8Array(await crypto.subtle.encrypt({name: 'AES-CBC', iv: dat}, _key, pad_dat));
     let pad = pad_tmp.slice(0, 16);
-    let dat_pad = new Uint8Array([...dat, ...pad]);
+    let dat_pad = concat_dat(dat, pad);
     return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-CBC', iv: iv}, _key, dat_pad));
+}
+
+// avoid [...a, ...b], which is very slow and memory hungry for large data
+function concat_dat(...arrays) {
+    let len = arrays.reduce((sum, a) => sum + a.length, 0);
+    let ret = new Uint8Array(len);
+    let pos = 0;
+    for (let a of arrays) {
+        ret.set(a, pos);
+        pos += a.length;
+    }
+    return ret;
+}
+
+// accept standard and url-safe base64, tolerate whitespace, percent-encoding and missing padding
+function b64_to_dat(str) {
+    str = str.replace(/\s/g, '');
+    if (str.includes('%'))
+        str = decodeURIComponent(str);
+    str = str.replace(/-/g, '+').replace(/_/g, '/');
+    str += '='.repeat((4 - str.length % 4) % 4);
+    return base64js.toByteArray(str);
 }
 
 function dat2hex(dat, join='') {
@@ -133,31 +155,114 @@ function readable_size(bytes, fixed=3, si=true) {
 }
 
 function walk(el, fn) {
-    for (let i = 0, len = el.childNodes.length; i < len; i++) {
-        let node = el.childNodes[i];
+    for (let node of [...el.childNodes]) { // copy, fn may replace node
         if (node.nodeType === 3)
             fn(node);
-        else if (node.nodeType === 1 && node.nodeName !== "SCRIPT")
+        else if (node.nodeType === 1 && !['SCRIPT', 'STYLE', 'A'].includes(node.nodeName))
             walk(node, fn);
     }
 }
 
+// build link nodes directly, never feed text back as html
 function linkable(el) {
     walk(el, function(n) {
-        let replacementNode = document.createElement('span');
-        let newHtml = anchorme(n.textContent);
-        n.parentNode.insertBefore(replacementNode, n);
-        n.parentNode.removeChild(n);
-        replacementNode.outerHTML = newHtml;
+        let text = n.textContent;
+        let links = anchorme.list(text).filter(l => l.isURL || l.isEmail);
+        if (!links.length)
+            return;
+        let frag = document.createDocumentFragment();
+        let pos = 0;
+        for (let l of links) {
+            frag.append(text.slice(pos, l.start));
+            let a = document.createElement('a');
+            if (l.isEmail)
+                a.href = l.string.startsWith('mailto:') ? l.string : `mailto:${l.string}`;
+            else
+                a.href = l.protocol ? l.string : `http://${l.string}`;
+            a.textContent = l.string;
+            frag.append(a);
+            pos = l.end;
+        }
+        frag.append(text.slice(pos));
+        n.replaceWith(frag);
     });
+}
+
+
+const SAFE_TAGS = new Set([
+    'a', 'abbr', 'audio', 'b', 'blockquote', 'br', 'caption', 'center', 'cite', 'code', 'col', 'colgroup',
+    'dd', 'del', 'div', 'dl', 'dt', 'em', 'figcaption', 'figure', 'font', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'hr', 'i', 'img', 'ins', 'kbd', 'li', 'mark', 'ol', 'p', 'pre', 'q', 's', 'small', 'source', 'span',
+    'strike', 'strong', 'sub', 'sup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u', 'ul', 'video'
+]);
+// removed with their content, other unknown tags are unwrapped
+const DROP_TAGS = new Set([
+    'applet', 'base', 'button', 'embed', 'form', 'frame', 'frameset', 'head', 'iframe', 'input', 'link',
+    'math', 'meta', 'noembed', 'noframes', 'noscript', 'object', 'option', 'script', 'select', 'style',
+    'svg', 'template', 'textarea', 'title', 'xmp'
+]);
+const SAFE_ATTRS = new Set([
+    'align', 'alt', 'color', 'colspan', 'controls', 'download', 'face', 'height', 'href', 'loop', 'muted',
+    'poster', 'rowspan', 'size', 'src', 'start', 'style', 'title', 'type', 'width'
+]);
+const SAFE_PROTOCOLS = {
+    href: ['http:', 'https:', 'mailto:', 'blob:', 'cde:'],
+    src: ['http:', 'https:', 'blob:', 'cde:', 'data:'],
+    poster: ['http:', 'https:', 'blob:', 'cde:', 'data:']
+};
+
+function safe_url(url, attr) {
+    try {
+        // parse like the browser does, e.g. "java\tscript:" becomes "javascript:"
+        return SAFE_PROTOCOLS[attr].includes(new URL(url, document.baseURI).protocol);
+    } catch (e) {
+        return false;
+    }
+}
+
+function sanitize_node(el) {
+    for (let node of [...el.childNodes]) {
+        if (node.nodeType === 3)
+            continue;
+        if (node.nodeType !== 1) { // comment etc.
+            node.remove();
+            continue;
+        }
+        let tag = node.nodeName.toLowerCase();
+        if (!SAFE_TAGS.has(tag)) {
+            if (DROP_TAGS.has(tag)) {
+                node.remove();
+            } else {
+                sanitize_node(node);
+                node.replaceWith(...node.childNodes);
+            }
+            continue;
+        }
+        for (let attr of [...node.attributes]) {
+            let name = attr.name.toLowerCase();
+            if (!SAFE_ATTRS.has(name) || (name in SAFE_PROTOCOLS && !safe_url(attr.value, name)))
+                node.removeAttribute(attr.name);
+        }
+        // attached files must be downloaded, not opened in the app origin
+        if (tag == 'a' && /^(blob|cde):/i.test(node.getAttribute('href')?.trim() || '') && !node.hasAttribute('download'))
+            node.setAttribute('download', '');
+        sanitize_node(node);
+    }
+}
+
+// sanitize the body of a parsed document in place
+function sanitize_doc(doc) {
+    sanitize_node(doc.body);
+    return doc;
 }
 
 export {
     read_file, load_img, date2num,
     sha256, aes256, aes256_blk0_d,
+    concat_dat, b64_to_dat,
     dat2hex, dat2str, str2dat,
     cpy,
     download,
     escape_html, readable_size,
-    walk, linkable
+    walk, linkable, sanitize_doc
 };

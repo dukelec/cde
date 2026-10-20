@@ -6,16 +6,17 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.20';
+var cache_name = 'cde-1.21';
 var cache_files = {
     "/img/icon/fontello.css" : "9143594ce27fc81648d345becdd74ba85cec2b2836908f12789d70e18e38174e",
     "/img/icon/fontello.woff2" : "c6f250032c14345783273890e92bb27611ffc2690afc851a138ac9fe2e275a44",
     "/img/icon.png" : "7160ad0053e77a16333b06123d567195777c67813dfe87d6c17e4df9d6f791b9",
-    "/manifest.json" : "02e874ad409a13334237157db7f34026542ec5cc3c5745c7fc0f216c1981af00",
-    "/src/lang/lang.js" : "dfebd527a1c59df65abfcf25c51b4c946b7d702712e9b7d5e2f70f775ca06567",
-    "/src/utils/helper.js" : "6e16f8705d2d690ed26ffbc9bb852246ce689bb966756ea0f0fc0bf3aadc728f",
+    "/manifest.json" : "6dc026408ccd23b671ec0c205309d77e54f11081fc224c1f6fed66a8863adb97",
+    "/src/lang/lang.js" : "8965db9b9cf03e34474c8c7aceec42d93a43a6806b2def4951d53df936b4eca0",
+    "/src/utils/helper.js" : "cf1b60efb6086b08d931fbbfbdf39f5c361a34ede09ad5ad2bcdf232dbe3613e",
     "/src/utils/idb.js" : "c277349bf34bdf1f8610a9d4cb0bcd6aadb5ae22300861cd87e9597ab597d796",
-    "/src/app.js" : "3c62c88af2d4cd2a5c82a5eb43a7ec0f6223d893b9463673a18ddd811a6bfa8a",
+    "/src/app.js" : "7eff29aa975e0904d51998aec7e5969d6226a014706b81aed990dac8d1ce9048",
+    "/src/layout.js" : "ed23a1e6f5add5ea03375ff7258623aad0fd44e32435759513cb3e9583b5ce07",
     "/lib/pell/pell.css" : "dd7012f74f875db0c7f6aa447ec86812914991e07cb8b32cd8db669b531f2e27",
     "/lib/pell/actions.js" : "2ad31c233702a0f9a5aa8cb9c66741b7aec7ae110a3dc94c22a2b8b867bc959a",
     "/lib/pell/utilities.js" : "73d5066c77258f034b604863824e1aa9b96304bbf36c906148def635300da60c",
@@ -24,7 +25,7 @@ var cache_files = {
     "/lib/anchorme.min.js" : "87de70486f3fcaded74ac742724f8bf3cefd08b636323c90ee3619f35e958463",
     "/lib/msgpack.min.js" : "c670cb2d82b1285c0b12640ad52919f48ec8c268dd794446b57524ff45a74d1a",
     "/lib/base64js.min.js" : "f549a4c1d0eb4a6140081aea9c009cfff6fc2d0c289336d9e4542a03bf6281f5",
-    "/" : "13c7de9fe4cd4bf6626e4f08c134ab70c16dd738075f21d6d3dde5d9e0dcee56"
+    "/" : "fac73b65b2d7fc1b85b708cf883d93402732e23018a86d44ea80346a17910e80"
 };
 
 
@@ -39,16 +40,7 @@ function dat2hex(dat, join='') {
 }
 
 async function resp_sha(resp) {
-    const reader = resp.body.getReader();
-    let dat = new Uint8Array();
-    while (true) {
-        const ret = await reader.read();
-        if (ret.value && ret.value.length)
-            dat = new Uint8Array([ ...dat, ...ret.value ]);
-        if (ret.done)
-            break;
-    }
-    const sha = await sha256(dat);
+    const sha = await sha256(await resp.arrayBuffer());
     return dat2hex(sha);
 }
 
