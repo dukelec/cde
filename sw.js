@@ -6,16 +6,16 @@
 
 // update file list by tool gen_sw.sh under tools/
 
-var cache_name = 'cde-1.20';
 var cache_files = {
     "/cde/img/icon/fontello.css" : "9143594ce27fc81648d345becdd74ba85cec2b2836908f12789d70e18e38174e",
     "/cde/img/icon/fontello.woff2" : "c6f250032c14345783273890e92bb27611ffc2690afc851a138ac9fe2e275a44",
     "/cde/img/icon.png" : "7160ad0053e77a16333b06123d567195777c67813dfe87d6c17e4df9d6f791b9",
-    "/cde/manifest.json" : "33f43fbf0e9077f7ef08b16b731b29b328c01e88289f5ed283d6038579d7e34a",
-    "/cde/src/lang/lang.js" : "dfebd527a1c59df65abfcf25c51b4c946b7d702712e9b7d5e2f70f775ca06567",
-    "/cde/src/utils/helper.js" : "6e16f8705d2d690ed26ffbc9bb852246ce689bb966756ea0f0fc0bf3aadc728f",
+    "/cde/manifest.json" : "6dc026408ccd23b671ec0c205309d77e54f11081fc224c1f6fed66a8863adb97",
+    "/cde/src/lang/lang.js" : "50895d04d003497dad8d61cc4f30968322c12ff447b6565c27cab7521316e06e",
+    "/cde/src/utils/helper.js" : "d1c6a8b3488cf93a6e105151913da9d7f3d1ad32f844bf1670c698465ee47524",
     "/cde/src/utils/idb.js" : "c277349bf34bdf1f8610a9d4cb0bcd6aadb5ae22300861cd87e9597ab597d796",
-    "/cde/src/app.js" : "9f89d878826d200db130a7fb6bc5be383325e55bb47316d2a8cf84e12dc4a5dd",
+    "/cde/src/app.js" : "1a53202e1fd0f12ded05ceec94841143dd9b44e97a8c1b04e0fdde47d3f8908e",
+    "/cde/src/layout.js" : "499146e59f087a5c5504c59f57d858a932153ccdc1ff3ac87ff11b475d31d476",
     "/cde/lib/pell/pell.css" : "dd7012f74f875db0c7f6aa447ec86812914991e07cb8b32cd8db669b531f2e27",
     "/cde/lib/pell/actions.js" : "2ad31c233702a0f9a5aa8cb9c66741b7aec7ae110a3dc94c22a2b8b867bc959a",
     "/cde/lib/pell/utilities.js" : "73d5066c77258f034b604863824e1aa9b96304bbf36c906148def635300da60c",
@@ -24,7 +24,7 @@ var cache_files = {
     "/cde/lib/anchorme.min.js" : "87de70486f3fcaded74ac742724f8bf3cefd08b636323c90ee3619f35e958463",
     "/cde/lib/msgpack.min.js" : "c670cb2d82b1285c0b12640ad52919f48ec8c268dd794446b57524ff45a74d1a",
     "/cde/lib/base64js.min.js" : "f549a4c1d0eb4a6140081aea9c009cfff6fc2d0c289336d9e4542a03bf6281f5",
-    "/cde/" : "13c7de9fe4cd4bf6626e4f08c134ab70c16dd738075f21d6d3dde5d9e0dcee56"
+    "/cde/" : "fac73b65b2d7fc1b85b708cf883d93402732e23018a86d44ea80346a17910e80"
 };
 
 
@@ -39,32 +39,41 @@ function dat2hex(dat, join='') {
 }
 
 async function resp_sha(resp) {
-    const reader = resp.body.getReader();
-    let dat = new Uint8Array();
-    while (true) {
-        const ret = await reader.read();
-        if (ret.value && ret.value.length)
-            dat = new Uint8Array([ ...dat, ...ret.value ]);
-        if (ret.done)
-            break;
-    }
-    const sha = await sha256(dat);
+    const sha = await sha256(await resp.arrayBuffer());
     return dat2hex(sha);
 }
 
+// fnv-1a, cheap synchronous hash to name the cache after the file list,
+// so every build gets its own cache without bumping a version string by hand
+function fnv1a(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+}
+var cache_name = `cde-${fnv1a(JSON.stringify(cache_files))}`;
 
+
+// all or nothing: fetch and verify every file first, then write the cache,
+// so the app never runs with files from different versions
 async function cache_all(event) {
     let r = Math.random();
-    console.log(`sw: cache add all, r: ${r}`);
-    let cache = await caches.open(cache_name);
+    console.log(`sw: cache add all, r: ${r}, cache: ${cache_name}`);
+    let verified = {};
     for (let k in cache_files) {
         let response = await fetch(`${k}?r=${r}`, {cache: 'no-store'});
+        if (!response.ok)
+            throw new Error(`sw: ${k} http error: ${response.status}`);
         const sha = await resp_sha(response.clone());
-        if (sha == cache_files[k])
-            cache.put(k, response);
-        else
-            console.warn(`sw: ${k} hash error: ${sha} != ${cache_files[k]}`);
+        if (sha != cache_files[k])
+            throw new Error(`sw: ${k} hash error: ${sha} != ${cache_files[k]}`);
+        verified[k] = response;
     }
+    let cache = await caches.open(cache_name);
+    for (let k in verified)
+        await cache.put(k, verified[k]);
     console.log('sw: cache add all finished');
 }
 
@@ -83,7 +92,7 @@ async function handle_request(event) {
         const sha = await resp_sha(response.clone());
         if (sha == cache_files[k]) {
             console.log(`sw: add ${k} to cache`);
-            cache.put(k, response.clone());
+            await cache.put(k, response.clone());
         } else {
             console.warn(`sw: ${k} hash still error: ${sha} != ${cache_files[k]}`);
         }
@@ -114,8 +123,8 @@ async function handle_activate(event) {
 
 
 self.addEventListener('install', event => {
-    event.waitUntil(cache_all(event));
-    self.skipWaiting();
+    // install fails if any file is missing or mismatched, the old version keeps running
+    event.waitUntil(cache_all(event).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('fetch', event => {

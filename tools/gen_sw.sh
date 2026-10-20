@@ -11,6 +11,7 @@ echo "$files" | while read -r line; do
     file="$line"
     [[ "$line" == "/httpd.conf" ]] && continue
     [[ "$line" == "/Readme.md" ]] && continue
+    [[ "$line" == "/License" ]] && continue
     [[ "$line" == "/sw.js" ]] && continue
     [[ "$line" =~ ^"/tools/" ]] && continue
     [[ "$line" =~ ^"/cgi-bin/" ]] && continue
