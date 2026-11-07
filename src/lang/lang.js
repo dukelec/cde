@@ -14,11 +14,14 @@ let trans_hk = {
     'Plaintext': '明文',
     'Use password': '使用密碼',
     'Content': '內容',
+    'Rendered': '渲染',
+    'Source': '源碼',
     'Files': '文件',
     'Edit': '編輯',
     'Preview': '預覽',
 
     'Reply': '回覆',
+    'Rich Text': '富文本',
     'Add File': '添加文件',
     'Save Resources Locally': '保存資源到本地',
     'Share URL': '分享鏈接',
@@ -62,6 +65,7 @@ let trans_hk = {
     'Encrypt': '加密',
     'Encrypting...': '加密中…',
     'Encrypted': '已加密',
+    'The content will be converted, some formatting may be lost. Continue?': '內容將被轉換，部分格式可能丟失，繼續？',
 
     'OK': '好',
     'Switching APP to new version.': '切換 APP 至新版本'
@@ -78,11 +82,14 @@ let trans_cn = {
     'Plaintext': '明文',
     'Use password': '使用密码',
     'Content': '内容',
+    'Rendered': '渲染',
+    'Source': '源码',
     'Files': '文件',
     'Edit': '编辑',
     'Preview': '预览',
 
     'Reply': '回覆',
+    'Rich Text': '富文本',
     'Add File': '添加文件',
     'Save Resources Locally': '保存资源到本地',
     'Share URL': '分享链接',
@@ -126,6 +133,7 @@ let trans_cn = {
     'Encrypt': '加密',
     'Encrypting...': '加密中…',
     'Encrypted': '已加密',
+    'The content will be converted, some formatting may be lost. Continue?': '内容将被转换，部分格式可能丢失，继续？',
 
     'OK': '好',
     'Switching APP to new version.': '切换 APP 至新版本'
