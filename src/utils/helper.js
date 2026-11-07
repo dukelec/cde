@@ -4,6 +4,29 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
+import { Marked } from '../../lib/marked.esm.js';
+import hljs from '../../lib/highlight/highlight.min.js';
+
+const marked = new Marked({
+    breaks: true,
+    renderer: {
+        // <input> is dropped by the sanitizer, show task list items as text
+        checkbox: ({ checked }) => checked ? '☑ ' : '☐ ',
+        code({ text, lang }) {
+            let language = (lang || '').trim().split(/\s/)[0];
+            if (!language || !hljs.getLanguage(language))
+                return false; // default renderer
+            let html = hljs.highlight(text, { language, ignoreIllegals: true }).value;
+            return `<pre><code class="hljs language-${escape_html(language)}">${html}</code></pre>\n`;
+        }
+    }
+});
+
+// output is not sanitized
+function md2html(src) {
+    return marked.parse(src);
+}
+
 async function read_file(file) {
     return await new Promise((resolve, reject) => {
         let reader = new FileReader();
@@ -252,6 +275,8 @@ const SAFE_ATTRS = new Set([
     'align', 'alt', 'color', 'colspan', 'controls', 'download', 'face', 'height', 'href', 'loop', 'muted',
     'poster', 'rowspan', 'size', 'src', 'start', 'style', 'title', 'type', 'width'
 ]);
+// only highlight.js classes, e.g. "hljs-title class_"
+const SAFE_CLASS = /^(hljs(-[\w-]+)?|language-[\w+#.-]+|[a-z]+_+)$/;
 const SAFE_PROTOCOLS = {
     href: ['http:', 'https:', 'mailto:', 'blob:', 'cde:'],
     src: ['http:', 'https:', 'blob:', 'cde:', 'data:'],
@@ -287,7 +312,13 @@ function sanitize_node(el) {
         }
         for (let attr of [...node.attributes]) {
             let name = attr.name.toLowerCase();
-            if (!SAFE_ATTRS.has(name) || (name in SAFE_PROTOCOLS && !safe_url(attr.value, name)))
+            if (name == 'class') {
+                let cls = attr.value.split(/\s+/).filter(c => SAFE_CLASS.test(c)).join(' ');
+                if (cls)
+                    node.setAttribute(attr.name, cls);
+                else
+                    node.removeAttribute(attr.name);
+            } else if (!SAFE_ATTRS.has(name) || (name in SAFE_PROTOCOLS && !safe_url(attr.value, name)))
                 node.removeAttribute(attr.name);
             else if (name == 'style' && /url\s*\(|expression\s*\(|@import|behavior\s*:/i.test(attr.value))
                 node.removeAttribute(attr.name); // no external resource loading from css
@@ -305,7 +336,130 @@ function sanitize_doc(doc) {
     return doc;
 }
 
+
+const BLOCK_TAGS = new Set([
+    'ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'CAPTION', 'DD', 'DIV', 'DL', 'DT', 'FIGCAPTION', 'FIGURE',
+    'FOOTER', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER', 'HR', 'LI', 'MAIN', 'NAV', 'OL', 'P', 'PRE',
+    'SECTION', 'TABLE', 'TBODY', 'TD', 'TFOOT', 'TH', 'THEAD', 'TR', 'UL'
+]);
+const MEDIA_TAGS = new Set(['IMG', 'VIDEO', 'AUDIO']);
+const is_block = n => n.nodeType === 1 && BLOCK_TAGS.has(n.nodeName);
+
+// lines as displayed: one per block or <br>, empty lines kept, a trailing <br> is only a placeholder
+// line: array of strings and media nodes, other formatting is dropped
+function to_lines(nodes) {
+    let lines = [];
+    let cur = null;
+    let add = x => (cur ??= []).push(x);
+    let br = () => { lines.push(cur || []); cur = null; };
+    let end_line = () => { if (cur) lines.push(cur); cur = null; };
+    let walk = (n, pre) => {
+        if (n.nodeType === 3) {
+            let t = n.data;
+            if (!pre) { // collapse like the browser does, nbsp is kept (code indentation)
+                t = t.replace(/[ \t\r\n]+/g, ' ');
+                if (!cur)
+                    t = t.replace(/^ /, '');
+            }
+            t = t.replace(/\u00a0/g, ' ');
+            t.split('\n').forEach((s, i) => {
+                if (i)
+                    br();
+                if (s)
+                    add(s);
+            });
+        } else if (n.nodeType === 1) {
+            if (n.nodeName === 'BR')
+                return br();
+            if (MEDIA_TAGS.has(n.nodeName))
+                return add(n);
+            let blk = is_block(n);
+            if (blk)
+                end_line();
+            for (let c of n.childNodes)
+                walk(c, pre || n.nodeName === 'PRE');
+            if (blk)
+                end_line();
+        }
+    };
+    for (let n of nodes)
+        walk(n, false);
+    end_line();
+    return lines;
+}
+
+// replace the blocks touched by the selection with one <pre>
+// execCommand formatBlock drops empty lines, and insertHTML merges the following paragraph
+function code_block(root) {
+    let sel = getSelection();
+    if (!sel.rangeCount)
+        return false;
+    let range = sel.getRangeAt(0);
+    if (!root.contains(range.commonAncestorContainer))
+        return false;
+
+    let top = range.commonAncestorContainer;
+    while (top != root && !is_block(top))
+        top = top.parentNode;
+    let nodes;
+    if (top != root && ![...top.children].some(is_block)) {
+        // within one paragraph, keep list items and table cells
+        nodes = /^(LI|DT|DD|TD|TH|CAPTION)$/.test(top.nodeName) ? [...top.childNodes] : [top];
+        if (!nodes.length) {
+            nodes = [document.createElement('br')];
+            top.append(nodes[0]);
+        }
+    } else {
+        let child_of = (n, offset, is_end) => {
+            if (n == top)
+                return top.childNodes[is_end ? offset - 1 : offset];
+            while (n.parentNode != top)
+                n = n.parentNode;
+            return n;
+        };
+        let a = child_of(range.startContainer, range.startOffset, false);
+        let b = child_of(range.endContainer, range.endOffset, true);
+        if (!a || !b)
+            return false;
+        // selection ends at the start of b, e.g. triple click
+        let r = document.createRange();
+        r.setStart(b, 0);
+        r.setEnd(range.endContainer, range.endOffset);
+        if (b != a && !r.toString() && !r.cloneContents().querySelector('img, video, audio, br'))
+            b = b.previousSibling;
+        nodes = [];
+        for (let n = a; n; n = n.nextSibling) {
+            nodes.push(n);
+            if (n == b)
+                break;
+        }
+    }
+    // lists and tables are replaced as a whole
+    while (nodes[0].parentNode != root && /^(UL|OL|DL|TABLE|THEAD|TBODY|TFOOT|TR)$/.test(nodes[0].parentNode.nodeName))
+        nodes = [nodes[0].parentNode];
+
+    let lines = to_lines(nodes);
+    let pre = document.createElement('pre');
+    nodes[0].before(pre);
+    for (let n of nodes)
+        n.remove();
+    lines.forEach((l, i) => {
+        if (i)
+            pre.append(document.createElement('br'));
+        pre.append(...l);
+    });
+    if (!lines.length || !lines.at(-1).length)
+        pre.append(document.createElement('br')); // placeholder, keeps the last empty line
+    pre.normalize();
+    let r = document.createRange();
+    r.selectNodeContents(pre);
+    sel.removeAllRanges();
+    sel.addRange(r);
+    return true;
+}
+
 export {
+    md2html, to_lines, code_block,
     read_file, load_img, date2num,
     sha256, aes256, aes256_blk0_d,
     concat_dat, b64_to_dat,

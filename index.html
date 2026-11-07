@@ -13,6 +13,7 @@
 <link rel="stylesheet" type="text/css" href="./lib/pell/pell.css">
 <link rel="stylesheet" href="./lib/bulma.min.css">
 <link rel="stylesheet" href="./img/icon/fontello.css">
+<link rel="stylesheet" href="./lib/highlight/github.min.css">
 
 <script src="./lib/msgpack.min.js" defer></script>
 <script src="./lib/base64js.min.js" defer></script>
@@ -69,6 +70,30 @@
 .progress.is-large+.progress-value {
   font-size: calc(1.5rem / 1.5);
   line-height: 1.5rem;
+}
+
+/* title with buttons on the right, wrap on narrow screens */
+.title-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+.title-bar .title, .title-bar .field {
+    margin-bottom: 0;
+}
+
+/* rich text: each line is a <p>, no paragraph spacing */
+.content.rich p {
+    margin-bottom: 0;
+}
+
+/* use bulma pre style for highlighted code */
+pre code.hljs {
+    padding: 0;
+    background: transparent;
 }
 </style>
 </head>

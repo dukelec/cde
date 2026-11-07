@@ -9,7 +9,7 @@ let index_template = () => `
 <nav class="navbar is-light" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
         <a href="${location.pathname}" class="navbar-item">
-            <img src="img/icon.png"> &nbsp; <strong>CDEncrypt</strong> &nbsp; <small>v1.21</small>
+            <img src="img/icon.png"> &nbsp; <strong>CDEncrypt</strong> &nbsp; <small>v1.22</small>
         </a>
     </div>
     <div class="navbar-menu">
@@ -63,7 +63,13 @@ let index_template = () => `
 
     <br>
     <div class="container">
-        <h3 class="title is-size-4">${L('Content')}</h3>
+        <div class="title-bar">
+            <h3 class="title is-size-4">${L('Content')}</h3>
+            <div class="field has-addons" id="in_md_view" style="display: none;">
+                <p class="control"><button class="button is-small" id="in_md_html">${L('Rendered')}</button></p>
+                <p class="control"><button class="button is-small" id="in_md_src">${L('Source')}</button></p>
+            </div>
+        </div>
         <div class="box" id="in_plaintext"></div>
     </div>
 
@@ -86,8 +92,15 @@ let index_template = () => `
 
 <section class="section">
     <div class="container">
-        <h1 class="title">${L('Edit')} | ${L('Reply')}</h1>
+        <div class="title-bar">
+            <h1 class="title">${L('Edit')} | ${L('Reply')}</h1>
+            <div class="field has-addons">
+                <p class="control"><button class="button is-small" id="mode_html">${L('Rich Text')}</button></p>
+                <p class="control"><button class="button is-small" id="mode_md">Markdown</button></p>
+            </div>
+        </div>
         <div id="editor" class="pell"></div>
+        <textarea class="textarea" id="md_editor" style="display: none; height: 300px; font-family: monospace;"></textarea>
 
         <section class="modal-card-body" id="out_files">
         </section>

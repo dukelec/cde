@@ -6,8 +6,8 @@
 
 /* Message format: 'cde|' + msgpack('message body...') or msgpack:
  *  {
- *      b: 'message body...',
- *      f: {
+ *      b: 'message body...', // html, or m: 'markdown body...'
+ *      f: { // omitted if no files
  *          file_name: {type: 'image/jpeg', data: Uint8Array}
  *      },
  *      // v: 0, // version
@@ -26,12 +26,14 @@ import {
     escape_html, date2num,
     read_file, download,
     readable_size, linkable, sanitize_doc,
-    copy_text, select_text } from './utils/helper.js'
+    copy_text, select_text,
+    md2html, to_lines, code_block } from './utils/helper.js'
 import { Idb } from './utils/idb.js';
 
 
 let first_install = false;
 let editor;
+let md_editor = document.getElementById('md_editor');
 let save_timer = null;
 
 let db = null;
@@ -40,6 +42,7 @@ let pw_def = null; // default password
 
 let in_prj = { b: '', f: {} };
 let in_prj_url_map = {};
+let in_md_src = false; // show markdown source
 
 let out_pw = null; // password for edit & reply
 let out_prj = { b: '', f: {} };
@@ -78,6 +81,8 @@ function html_blob_conv(html, url_map, cde2blob=true) {
             if (cde2blob) {
                 if (url.search("cde:") == 0) {
                     let name = url.slice(4);
+                    if (!url_map[name])
+                        name = safe_decode(name); // urls are percent-encoded by markdown
                     if (!url_map[name]) {
                         console.warn(`lost file: ${name}`);
                         continue;
@@ -97,9 +102,33 @@ function html_blob_conv(html, url_map, cde2blob=true) {
     return doc.body.innerHTML;
 }
 
+function safe_decode(str, fn = decodeURIComponent) {
+    try {
+        return fn(str);
+    } catch (e) {
+        return str;
+    }
+}
+
+// cde: url for markdown, encode the name if it is not a valid link destination
+function md_file_url(name) {
+    if (/^[^\s()<>\\]+$/.test(name))
+        return `cde:${name}`;
+    return `cde:${encodeURIComponent(name).replace(/[()]/g, c => `%${c.charCodeAt(0).toString(16)}`)}`;
+}
+
+function is_md() {
+    return out_prj.t == 'md';
+}
+
 async function to_local() {
+    let md = is_md();
+    if (md)
+        await save_out_b();
+    let md_b = out_prj.b;
     let parser = new DOMParser()
-    let doc = parser.parseFromString(editor.content.innerHTML, "text/html");
+    let doc = parser.parseFromString(md ? md2html(md_b) : editor.content.innerHTML, "text/html");
+    let done = {}; // url: file name
     for (let a of ['src', 'href', 'poster']) {
         for (let elem of doc.querySelectorAll(`[${a}]`)) {
             let url = elem.getAttribute(a);
@@ -115,6 +144,14 @@ async function to_local() {
                 continue;
             if (loc.origin == location.origin && loc.pathname == location.pathname) // anchor link
                 continue;
+            // markdown: replace the url as written in the source, keep autolinks
+            let src_url = md && [url, safe_decode(url, decodeURI)].find(u => md_b.includes(u));
+            if (md && (!src_url || (elem.nodeName == 'A' && url.endsWith(elem.textContent))))
+                continue;
+            if (url in done) {
+                elem.setAttribute(a, out_prj_url_map[done[url]]);
+                continue;
+            }
             console.log('to_local:', url);
             try {
                 if (loc.protocol == 'http:') {
@@ -133,14 +170,23 @@ async function to_local() {
                 let name = `_${idx}.${ext}`;
                 out_prj.f[name] = {'type': blob.type, 'data': u8a};
                 out_prj_url_map[name] = file_url(out_prj.f[name]);
-                elem.setAttribute(a, out_prj_url_map[name]);
+                done[url] = name;
+                if (md) {
+                    let esc = src_url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    md_b = md_b.replace(new RegExp(`${esc}(?=[\\s)"'>]|$)`, 'g'), () => md_file_url(name));
+                } else {
+                    elem.setAttribute(a, out_prj_url_map[name]);
+                }
             } catch (e) {
                 if (!confirm(`${L('Download resource error, continue?\n(Please try browser plug-ins e.g. CORS Unblock.)')}\n${url}: ${e}`))
                     return;
             }
         }
     }
-    editor.content.innerHTML = doc.body.innerHTML;
+    if (md)
+        md_editor.value = md_b;
+    else
+        editor.content.innerHTML = doc.body.innerHTML;
     await save_out_b();
     await db.set('tmp', 'f', out_prj.f);
     update_out_files();
@@ -151,8 +197,48 @@ async function to_local() {
 async function save_out_b() {
     clearTimeout(save_timer);
     save_timer = null;
-    out_prj.b = html_blob_conv(editor.content.innerHTML, out_prj_url_map, false);
+    out_prj.b = is_md() ? md_editor.value : html_blob_conv(editor.content.innerHTML, out_prj_url_map, false);
     await db.set('tmp', 'b', out_prj.b);
+}
+
+// out_prj.b -> editor
+function load_out_b() {
+    let md = is_md();
+    document.getElementById('editor').style.display = md ? 'none' : '';
+    md_editor.style.display = md ? '' : 'none';
+    document.getElementById('mode_html').classList.toggle('is-info', !md);
+    document.getElementById('mode_md').classList.toggle('is-info', md);
+    if (md)
+        md_editor.value = out_prj.b;
+    else
+        editor.content.innerHTML = html_blob_conv(out_prj.b, out_prj_url_map);
+}
+
+function on_edit() { // save after typing pauses
+    enc_reset();
+    clearTimeout(save_timer);
+    save_timer = setTimeout(save_out_b, 500);
+}
+
+async function set_md(md) {
+    if (md == is_md())
+        return;
+    await save_out_b();
+    if (out_prj.b.trim() && !confirm(L('The content will be converted, some formatting may be lost. Continue?')))
+        return;
+    if (md) {
+        let doc = new DOMParser().parseFromString(out_prj.b, 'text/html');
+        let lines = to_lines([...doc.body.childNodes]);
+        out_prj.b = lines.map(l => l.map(x => typeof x == 'string' ? x : x.outerHTML).join('')).join('\n');
+        out_prj.t = 'md';
+    } else {
+        out_prj.b = md2html(out_prj.b);
+        delete out_prj.t;
+    }
+    load_out_b();
+    await save_out_b();
+    await db.set('tmp', 't', out_prj.t || '');
+    enc_reset();
 }
 
 
@@ -180,20 +266,26 @@ window.addEventListener('load', async function() {
 
     out_prj.b = await db.get('tmp', 'b') || '';
     out_prj.f = await db.get('tmp', 'f') || {};
+    if (await db.get('tmp', 't') == 'md')
+        out_prj.t = 'md';
     out_prj_url_map = build_url_map(out_prj.f);
 
     editor = pell.init({
         element: document.getElementById('editor'),
-        onChange: () => { // save after typing pauses
-            enc_reset();
-            clearTimeout(save_timer);
-            save_timer = setTimeout(save_out_b, 500);
-        },
+        onChange: on_edit,
         defaultParagraphSeparator: 'p',
         styleWithCSS: false,
         actions: [
             'bold',
-            'code',
+            {
+                name: 'code',
+                result: () => { // true: pell refocuses the editor
+                    if (!code_block(editor.content))
+                        return false;
+                    on_edit();
+                    return true;
+                }
+            },
             'heading1',
             'heading2',
             'image',
@@ -222,12 +314,13 @@ window.addEventListener('load', async function() {
         classes: {
             actionbar: 'pell-actionbar',
             button: 'pell-button',
-            content: 'pell-content',
+            content: 'pell-content content rich',
             selected: 'pell-button-selected'
         }
     });
 
-    editor.content.innerHTML = html_blob_conv(out_prj.b, out_prj_url_map);
+    md_editor.oninput = on_edit;
+    load_out_b();
     update_out_files();
 
     update_modal_passwd_list();
@@ -253,6 +346,8 @@ document.addEventListener('click', e => {
 });
 
 document.getElementById('reload_page').onclick = () => location.reload();
+document.getElementById('mode_html').onclick = () => set_md(false);
+document.getElementById('mode_md').onclick = () => set_md(true);
 for (let elem of document.getElementsByName('add_passwd'))
     elem.onclick = add_passwd;
 
@@ -302,7 +397,14 @@ function update_out_files() {
             </nav>`;
         list.insertAdjacentHTML('beforeend', html);
         list.lastElementChild.getElementsByTagName("button")[0].onclick = function() {
-            if (is_image) {
+            if (is_md()) {
+                md_editor.focus();
+                let s = is_image ? `![](${md_file_url(name)})` : `<video controls src="cde:${name_e}"></video>`;
+                if (!document.execCommand('insertText', false, s)) { // keep undo history
+                    md_editor.setRangeText(s, md_editor.selectionStart, md_editor.selectionEnd, 'end');
+                    on_edit();
+                }
+            } else if (is_image) {
                 pell.exec('insertImage', out_prj_url_map[name]);
             } else if (is_video) {
                 let html = `<video controls><source src="${out_prj_url_map[name]}"></video>`;
@@ -538,7 +640,9 @@ async function share_file() {
 async function encrypt_dat() {
     const key = await sha256(str2dat(out_pw));
     const header = str2dat('cde|');
-    const content = msgpack.encode(Object.keys(out_prj.f).length ? out_prj : out_prj.b);
+    const f = Object.keys(out_prj.f).length ? { f: out_prj.f } : null;
+    const msg = is_md() ? { m: out_prj.b, ...f } : f ? { b: out_prj.b, ...f } : out_prj.b;
+    const content = msgpack.encode(msg);
     return await aes256(concat_dat([header, content]), key);
 }
 
@@ -585,9 +689,12 @@ function to_prj(ret) {
         return { b: ret, f: {} };
     if (!ret || typeof ret != 'object')
         return null;
-    let prj = { b: ret.b ?? '', f: ret.f ?? {} };
+    let md = ret.m !== undefined;
+    let prj = { b: (md ? ret.m : ret.b) ?? '', f: ret.f ?? {} };
     if (typeof prj.b != 'string' || typeof prj.f != 'object')
         return null;
+    if (md)
+        prj.t = 'md'; // internal: b holds the body, t its type
     for (let name in prj.f) {
         let f = prj.f[name];
         if (!f || !ArrayBuffer.isView(f.data))
@@ -601,9 +708,27 @@ function to_prj(ret) {
 function show_in_prj() {
     in_prj_url_map = build_url_map(in_prj.f, in_prj_url_map);
     update_in_files();
+    in_md_src = false;
+    show_in_b();
+}
+
+function show_in_b() {
+    let md = in_prj.t == 'md';
     let elem = document.getElementById('in_plaintext');
-    elem.innerHTML = html_blob_conv(in_prj.b, in_prj_url_map);
-    linkable(elem);
+    document.getElementById('in_md_view').style.display = md ? '' : 'none';
+    document.getElementById('in_md_html').classList.toggle('is-info', !in_md_src);
+    document.getElementById('in_md_src').classList.toggle('is-info', in_md_src);
+    elem.classList.toggle('content', !(md && in_md_src)); // bulma typography
+    elem.classList.toggle('rich', !md);
+    if (md && in_md_src) {
+        let pre = document.createElement('pre');
+        pre.style = 'white-space: pre-wrap; word-break: break-word;';
+        pre.textContent = in_prj.b;
+        elem.replaceChildren(pre);
+    } else {
+        elem.innerHTML = html_blob_conv(md ? md2html(in_prj.b) : in_prj.b, in_prj_url_map);
+        linkable(elem);
+    }
 }
 
 async function decrypt(dat) {
@@ -753,18 +878,19 @@ document.getElementById('in_add_text').onclick = async function() {
 
 // copy, don't share objects and blob urls between in & out
 document.getElementById('re_edit').onclick = async function() {
-    out_prj = { b: in_prj.b, f: { ...in_prj.f } };
+    out_prj = { ...in_prj, f: { ...in_prj.f } };
     out_prj_url_map = build_url_map(out_prj.f, out_prj_url_map);
-    editor.content.innerHTML = html_blob_conv(out_prj.b, out_prj_url_map);
+    load_out_b();
     update_out_files();
     await save_out_b();
     await db.set('tmp', 'f', out_prj.f);
+    await db.set('tmp', 't', out_prj.t || '');
     alert(L('OK'));
 };
 
 document.getElementById('preview').onclick = async function() {
     await save_out_b();
-    in_prj = { b: out_prj.b, f: { ...out_prj.f } };
+    in_prj = { ...out_prj, f: { ...out_prj.f } };
     show_in_prj();
     document.getElementById('in_cur_pw').innerHTML = '--';
     alert(L('OK'));
@@ -778,6 +904,8 @@ document.getElementById('show_url').onclick = () => enc_out && show_url();
 document.getElementById('share_file').onclick = () => enc_out && share_file();
 document.getElementById('download_file').onclick = () => enc_out && download(enc_out, out_fname());
 document.getElementById('to_local').onclick = async () => await to_local();
+document.getElementById('in_md_html').onclick = () => { in_md_src = false; show_in_b(); };
+document.getElementById('in_md_src').onclick = () => { in_md_src = true; show_in_b(); };
 
 function modal_open(id) {
     document.getElementById(id).classList.add('is-active');
